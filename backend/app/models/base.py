@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import uuid
 from sqlmodel import Field, SQLModel
-from sqlalchemy import Column, DateTime
+from sqlalchemy import DateTime
 
 
 def utc_now() -> datetime:
@@ -23,20 +23,13 @@ class TimestampMixin(SQLModel):
     """Mixin for timezone-aware created_at and updated_at timestamps."""
     created_at: datetime = Field(
         default_factory=utc_now,
-        sa_column=Column(
-            DateTime(timezone=True),
-            nullable=False,
-            default=utc_now,
-        ),
+        sa_type=DateTime(timezone=True),
+        nullable=False,
     )
     updated_at: datetime = Field(
         default_factory=utc_now,
-        sa_column=Column(
-            DateTime(timezone=True),
-            nullable=False,
-            default=utc_now,
-            onupdate=utc_now,
-        ),
+        sa_type=DateTime(timezone=True),
+        nullable=False,
     )
 
 
