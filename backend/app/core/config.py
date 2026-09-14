@@ -25,6 +25,12 @@ class Settings(BaseSettings):
         "http://localhost:8000",
     ]
 
+    # JWT Security Settings
+    SECRET_KEY: str = "turfmate-super-secret-jwt-key-2026-production-change-me"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
     @property
     def POSTGRES_DATABASE_URL(self) -> str:
         return self.DATABASE_URL
