@@ -1,11 +1,13 @@
-from typing import Annotated
+from typing import Annotated, Callable
 import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 from app.core.security import decode_token
+from app.crud import business_member as member_crud
 from app.crud.user import get_user_by_id
 from app.db.session import get_session
+from app.models.business import BusinessMember, BusinessRole
 from app.models.user import User
 
 http_bearer = HTTPBearer(auto_error=True)
@@ -89,3 +91,43 @@ def get_current_superuser(current_user: CurrentUserDep) -> User:
             detail="The user doesn't have enough privileges.",
         )
     return current_user
+
+
+def get_business_member_or_403(
+    business_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    session: SessionDep,
+) -> BusinessMember:
+    """Validate that the current user belongs to the specified business."""
+    member = member_crud.get_member(session, business_id, current_user.id)
+    if not member or not member.is_active:
+        if current_user.is_superuser:
+            return BusinessMember(
+                business_id=business_id,
+                user_id=current_user.id,
+                role=BusinessRole.OWNER,
+                is_active=True,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this business.",
+        )
+    return member
+
+
+def require_business_roles(allowed_roles: list[BusinessRole]) -> Callable:
+    """Dependency factory checking if caller has an authorized role in the business."""
+    def role_checker(
+        member: Annotated[BusinessMember, Depends(get_business_member_or_403)],
+        current_user: CurrentUserDep,
+    ) -> BusinessMember:
+        if current_user.is_superuser:
+            return member
+        if member.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Operation requires one of the following roles: {[r.value for r in allowed_roles]}.",
+            )
+        return member
+
+    return role_checker
