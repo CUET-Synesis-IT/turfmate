@@ -1,8 +1,9 @@
 from typing import Annotated
 import uuid
 from fastapi import APIRouter, Depends, status
-from app.api.deps import CurrentUserDep, SessionDep, require_business_roles
+from app.api.deps import CurrentUserDep, SessionDep, get_current_superuser, require_business_roles
 from app.models.business import BusinessMember, BusinessRole
+from app.models.user import User
 from app.schemas.business import (
     BusinessCreate,
     BusinessMemberCreate,
@@ -21,20 +22,36 @@ router = APIRouter(prefix="/businesses", tags=["businesses"])
     "",
     response_model=BusinessResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create a new business",
+    summary="Create a new business (Superuser only)",
 )
 def create_business(
     business_in: BusinessCreate,
-    current_user: CurrentUserDep,
+    current_admin: Annotated[User, Depends(get_current_superuser)],
     session: SessionDep,
 ) -> BusinessResponse:
-    """Create a new turf business. The authenticated caller automatically becomes its OWNER."""
+    """Create a new turf business. Only platform superusers/admins can initialize or create a business."""
     business, _ = business_service.create_business(
         session=session,
-        user=current_user,
+        user=current_admin,
         business_in=business_in,
     )
     return BusinessResponse.model_validate(business)
+
+
+@router.get(
+    "",
+    response_model=list[BusinessResponse],
+    summary="List all active businesses",
+)
+@router.get(
+    "/all-businesses",
+    response_model=list[BusinessResponse],
+    summary="List all active businesses (alias)",
+)
+def list_all_businesses(session: SessionDep) -> list[BusinessResponse]:
+    """Retrieve all active turf businesses (accessible by customers and public)."""
+    businesses = business_service.list_all_businesses(session)
+    return [BusinessResponse.model_validate(b) for b in businesses]
 
 
 @router.get(

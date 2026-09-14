@@ -58,6 +58,11 @@ def create_business(
     return db_business, db_member
 
 
+def list_all_businesses(session: Session) -> list[Business]:
+    """Retrieve all active businesses."""
+    return business_crud.list_active_businesses(session)
+
+
 def get_business(session: Session, business_id: uuid.UUID) -> Business:
     """Retrieve business by UUID or raise 404."""
     business = business_crud.get_business_by_id(session, business_id)

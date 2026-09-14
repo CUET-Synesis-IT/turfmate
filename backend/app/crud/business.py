@@ -16,6 +16,16 @@ def get_business_by_slug(session: Session, slug: str) -> Optional[Business]:
     return session.exec(statement).first()
 
 
+def list_active_businesses(session: Session) -> list[Business]:
+    """List all active businesses."""
+    statement = (
+        select(Business)
+        .where(Business.is_active.is_(True))
+        .order_by(Business.name.asc())
+    )
+    return session.exec(statement).all()
+
+
 def create_business(
     session: Session,
     business_in: BusinessCreate,
