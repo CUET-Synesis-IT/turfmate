@@ -12,9 +12,9 @@ from app.core.security import (
 )
 from app.crud import auth_session as session_crud
 from app.crud import user as user_crud
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.auth import LoginRequest, TokenResponse
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserRegister
 
 
 def _issue_tokens(
@@ -50,11 +50,11 @@ def _issue_tokens(
 
 def register_user(
     session: Session,
-    user_in: UserCreate,
+    user_in: UserRegister,
     device_info: Optional[str] = None,
     ip_address: Optional[str] = None,
 ) -> tuple[User, TokenResponse]:
-    """Register a new user with required phone number and optional email."""
+    """Register a new user with required phone number, optional email, and strictly CUSTOMER role."""
     # Check phone uniqueness
     existing_phone = user_crud.get_user_by_phone(session, user_in.phone_number)
     if existing_phone:
@@ -73,7 +73,7 @@ def register_user(
             )
 
     hashed_password = get_password_hash(user_in.password)
-    user = user_crud.create_user(session, user_in, hashed_password)
+    user = user_crud.create_user(session, user_in, hashed_password, role=UserRole.CUSTOMER)
     tokens = _issue_tokens(session, user, device_info, ip_address)
     return user, tokens
 

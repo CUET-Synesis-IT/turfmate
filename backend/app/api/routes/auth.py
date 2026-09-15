@@ -7,7 +7,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     TokenResponse,
 )
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserRegister, UserResponse
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -16,10 +16,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
-    summary="Register a new user",
+    summary="Register a new customer user",
 )
 def register(
-    user_in: UserCreate,
+    user_in: UserRegister,
     session: SessionDep,
     request: Request,
 ) -> dict:
