@@ -105,3 +105,7 @@ def require_roles(allowed_roles: list[UserRole]) -> Callable:
         return current_user
 
     return role_checker
+
+
+require_staff_or_admin = require_roles([UserRole.ADMIN, UserRole.STAFF])
+require_admin = require_roles([UserRole.ADMIN])

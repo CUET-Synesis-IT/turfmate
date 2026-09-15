@@ -31,6 +31,21 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
+    # SSLCOMMERZ Payment Gateway Settings
+    SSLCOMMERZ_STORE_ID: str = "testbox"
+    SSLCOMMERZ_STORE_PASS: str = "qwerty"
+    SSLCOMMERZ_IS_SANDBOX: bool = True
+    SSLCOMMERZ_SANDBOX_URL: str = "https://sandbox-gw.sslcommerz.com"
+    SSLCOMMERZ_LIVE_URL: str = "https://securepay.sslcommerz.com"
+
+    @property
+    def SSLCOMMERZ_BASE_URL(self) -> str:
+        return (
+            self.SSLCOMMERZ_SANDBOX_URL
+            if self.SSLCOMMERZ_IS_SANDBOX
+            else self.SSLCOMMERZ_LIVE_URL
+        )
+
     @property
     def POSTGRES_DATABASE_URL(self) -> str:
         return self.DATABASE_URL

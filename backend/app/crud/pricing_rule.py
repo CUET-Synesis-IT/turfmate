@@ -1,7 +1,7 @@
 from typing import Optional
 import uuid
 from sqlmodel import Session, select
-from app.models.schedule import PricingRule
+from app.models.pricing_rules import PricingRule
 from app.schemas.pricing import PricingRuleCreate, PricingRuleUpdate
 
 

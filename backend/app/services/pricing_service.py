@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 from app.crud import court as court_crud
 from app.crud import pricing_rule as pricing_crud
-from app.models.schedule import PricingRule
+from app.models.pricing_rules import PricingRule
 from app.models.user import User, UserRole
 from app.schemas.pricing import PricingRuleCreate, PricingRuleUpdate
 
