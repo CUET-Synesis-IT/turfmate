@@ -1,5 +1,6 @@
 import apiClient from '@/lib/api';
-import { TokenResponse, RegisterResponse } from '@/lib/types';
+import { TokenResponse, RegisterResponse, User } from '@/lib/types';
+
 export const authService = {
     async login(
         phoneNumber: string,
@@ -37,5 +38,32 @@ export const authService = {
             payload
         );
         return response.data;
+    },
+
+    async getCurrentUser(): Promise<User> {
+        const response = await apiClient.get<User>('/api/v1/users/me');
+        return response.data;
+    },
+
+    async refreshToken(refreshToken: string): Promise<TokenResponse> {
+        const response = await apiClient.post<TokenResponse>('/api/v1/auth/refresh', {
+            refresh_token: refreshToken,
+        });
+        return response.data;
+    },
+
+    async logout(refreshToken?: string): Promise<{ message: string }> {
+        const rToken = refreshToken || (typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null);
+        if (rToken) {
+            try {
+                const response = await apiClient.post<{ message: string }>('/api/v1/auth/logout', {
+                    refresh_token: rToken,
+                });
+                return response.data;
+            } catch (error) {
+                console.error('Logout API call failed:', error);
+            }
+        }
+        return { message: 'Logged out.' };
     },
 };

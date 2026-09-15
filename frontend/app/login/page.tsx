@@ -7,23 +7,30 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AxiosError } from 'axios';
+import { Eye, EyeOff, Lock, Phone, AlertCircle, Loader2 } from 'lucide-react';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/lib/auth-store';
 import { LoginErrorResponse, LoginErrorDetail } from '@/lib/types';
 
-// Zod validation schema
+// Zod validation schema allowing standard 11-digit BD mobile number or email
 const loginSchema = z.object({
     phone_number: z
         .string()
-        .min(1, 'Phone number is required')
-        .regex(
-            /^(\+8801[0-9]{8}|01[0-9]{8})$/,
-            'Phone number must be in format +8801XXXXXXXXX or 01XXXXXXXXX'
+        .min(1, 'Phone number or email is required')
+        .refine(
+            (val) => {
+                const clean = val.trim().replace(/[\s-]/g, '');
+                // BD phone: 11 digits (01XXXXXXXXX) or with country code (+8801XXXXXXXXX / 8801XXXXXXXXX)
+                const isPhone = /^(\+?8801[3-9]\d{8}|01[3-9]\d{8})$/.test(clean);
+                const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+                return isPhone || isEmail;
+            },
+            'Enter a valid 11-digit Bangladeshi mobile number (e.g., 01575085455) or email'
         ),
     password: z
         .string()
         .min(1, 'Password is required')
-        .min(8, 'Password must be at least 8 characters'),
+        .min(6, 'Password must be at least 6 characters'),
 });
 
 type LoginFormInputs = z.infer<typeof loginSchema>;
@@ -49,25 +56,25 @@ export default function LoginPage() {
         setFormError(null);
 
         try {
-            const response = await authService.login(data.phone_number, data.password);
+            const rawId = data.phone_number.trim();
+            const cleanIdentifier = rawId.includes('@') ? rawId : rawId.replace(/[\s-]/g, '');
 
-            // Store tokens
-            login(response);
+            const response = await authService.login(cleanIdentifier, data.password);
 
-            // Redirect to dashboard
-            router.push('/dashboard');
+            // Store tokens in Zustand auth store
+            await login(response);
+
+            // Redirect to dashboard or home
+            router.push('/');
         } catch (error) {
             setIsLoading(false);
 
-            // Handle API errors
             const axiosError = error as AxiosError<LoginErrorResponse>;
-            const errorData = axiosError?.response?.data || { detail: 'An error occurred' };
+            const errorData = axiosError?.response?.data || { detail: 'An error occurred during login' };
 
             if (typeof errorData.detail === 'string') {
-                // String error message
                 setFormError(errorData.detail);
             } else if (Array.isArray(errorData.detail)) {
-                // Array of field errors
                 const fieldErrors = errorData.detail as LoginErrorDetail[];
                 fieldErrors.forEach((errorItem) => {
                     const fieldName = errorItem.loc[1] as keyof LoginFormInputs;
@@ -83,20 +90,28 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex-1 bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
+        <div className="flex-1 bg-zinc-100 dark:bg-zinc-950 flex items-center justify-center px-4 py-8 sm:py-14">
             <div className="w-full max-w-md">
-                {/* Card Container */}
-                <div className="bg-white rounded-lg shadow-lg p-5 sm:p-8 md:p-10">
+                {/* Card Container with high-contrast borders and surfaces */}
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-zinc-800 p-6 sm:p-9 md:p-10">
                     {/* Header */}
-                    <div className="mb-6 sm:mb-8 text-center">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Login</h1>
-                        <p className="text-gray-600">Welcome back to TurfMate</p>
+                    <div className="mb-7 text-center">
+                        <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center text-white font-black text-xl mx-auto mb-3 shadow-md shadow-primary-600/30">
+                            T
+                        </div>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-950 dark:text-white tracking-tight">
+                            Welcome Back
+                        </h1>
+                        <p className="text-sm font-medium text-gray-600 dark:text-zinc-400 mt-1">
+                            Log in to your TurfMate account
+                        </p>
                     </div>
 
-                    {/* Form-level Error */}
+                    {/* Form-level Error Banner */}
                     {formError && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-red-700 text-sm font-medium">{formError}</p>
+                        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 rounded-xl flex items-start gap-3">
+                            <AlertCircle size={18} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-red-800 dark:text-red-200 text-sm font-semibold">{formError}</p>
                         </div>
                     )}
 
@@ -106,84 +121,72 @@ export default function LoginPage() {
                         <div>
                             <label
                                 htmlFor="phone_number"
-                                className="block text-sm font-medium text-gray-700 mb-2"
+                                className="block text-sm font-bold text-gray-900 dark:text-zinc-100 mb-2"
                             >
-                                Phone Number
+                                Phone Number or Email
                             </label>
-                            <input
-                                {...register('phone_number')}
-                                type="text"
-                                id="phone_number"
-                                placeholder="+8801XXXXXXXXX"
-                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition ${errors.phone_number
-                                    ? 'border-red-300 bg-red-50'
-                                    : 'border-gray-300 bg-white'
-                                    }`}
-                            />
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500 dark:text-zinc-400">
+                                    <Phone size={17} />
+                                </div>
+                                <input
+                                    {...register('phone_number')}
+                                    type="text"
+                                    id="phone_number"
+                                    placeholder="01... or +8801..."
+                                    autoComplete="tel"
+                                    className={`w-full pl-10 pr-4 py-3.5 rounded-xl border text-sm font-medium text-gray-950 dark:text-white bg-gray-50 dark:bg-zinc-800/80 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white dark:focus:bg-zinc-800 transition-all ${errors.phone_number
+                                        ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 dark:text-red-200 focus:ring-red-500'
+                                        : 'border-gray-300 dark:border-zinc-700'
+                                        }`}
+                                />
+                            </div>
                             {errors.phone_number && (
-                                <p className="mt-2 text-sm text-red-600 font-medium">
-                                    {errors.phone_number.message}
+                                <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                                    <AlertCircle size={13} />
+                                    <span>{errors.phone_number.message}</span>
                                 </p>
                             )}
                         </div>
 
                         {/* Password Field */}
                         <div>
-                            <label
-                                htmlFor="password"
-                                className="block text-sm font-medium text-gray-700 mb-2"
-                            >
-                                Password
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label
+                                    htmlFor="password"
+                                    className="block text-sm font-bold text-gray-900 dark:text-zinc-100"
+                                >
+                                    Password
+                                </label>
+                            </div>
                             <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500 dark:text-zinc-400">
+                                    <Lock size={17} />
+                                </div>
                                 <input
                                     {...register('password')}
                                     type={showPassword ? 'text' : 'password'}
                                     id="password"
                                     placeholder="Enter your password"
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition pr-12 ${errors.password
-                                        ? 'border-red-300 bg-red-50'
-                                        : 'border-gray-300 bg-white'
+                                    autoComplete="current-password"
+                                    className={`w-full pl-10 pr-12 py-3.5 rounded-xl border text-sm font-medium text-gray-950 dark:text-white bg-gray-50 dark:bg-zinc-800/80 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white dark:focus:bg-zinc-800 transition-all ${errors.password
+                                        ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 dark:text-red-200 focus:ring-red-500'
+                                        : 'border-gray-300 dark:border-zinc-700'
                                         }`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 transition"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
                                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                                 >
-                                    {showPassword ? (
-                                        <svg
-                                            className="w-5 h-5"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                    ) : (
-                                        <svg
-                                            className="w-5 h-5"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z"
-                                                clipRule="evenodd"
-                                            />
-                                            <path d="M15.171 13.576l1.472 1.472a1 1 0 001.414-1.414l-.001-.001A9.958 9.958 0 0010 3c-4.478 0-8.268 2.943-9.542 7 .639 1.906 1.678 3.623 3.049 5.009l.946-.946a4 4 0 015.678-5.678z" />
-                                        </svg>
-                                    )}
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
                             {errors.password && (
-                                <p className="mt-2 text-sm text-red-600 font-medium">
-                                    {errors.password.message}
+                                <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                                    <AlertCircle size={13} />
+                                    <span>{errors.password.message}</span>
                                 </p>
                             )}
                         </div>
@@ -192,47 +195,28 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full mt-6 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                            className="w-full mt-7 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-gray-400 dark:disabled:bg-zinc-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/25 hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
                         >
                             {isLoading ? (
                                 <>
-                                    <svg
-                                        className="animate-spin h-5 w-5"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <circle
-                                            className="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
-                                        ></circle>
-                                        <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                        ></path>
-                                    </svg>
-                                    Logging in...
+                                    <Loader2 size={18} className="animate-spin" />
+                                    <span>Logging in...</span>
                                 </>
                             ) : (
-                                'Login'
+                                <span>Log In</span>
                             )}
                         </button>
                     </form>
 
                     {/* Register Link */}
-                    <div className="mt-6 text-center">
-                        <p className="text-gray-600 text-sm">
-                            Don&apos;t have an account?{' '}
+                    <div className="mt-7 pt-6 border-t border-gray-100 dark:border-zinc-800 text-center">
+                        <p className="text-sm font-medium text-gray-600 dark:text-zinc-400">
+                            Don&apos;t have an account yet?{' '}
                             <Link
                                 href="/register"
-                                className="text-primary-600 hover:text-primary-700 font-semibold transition"
+                                className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-bold transition-colors underline-offset-4 hover:underline"
                             >
-                                Register
+                                Register here
                             </Link>
                         </p>
                     </div>
