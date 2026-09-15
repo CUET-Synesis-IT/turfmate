@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --navbar-height: 4rem;
 
   /* Turf-inspired green color palette */
   --color-primary-50: #f0fdf4;
@@ -39,6 +40,10 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+html {
+  scroll-padding-top: var(--navbar-height);
 }
 
 body {

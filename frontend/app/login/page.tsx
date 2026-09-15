@@ -83,13 +83,13 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-8">
+        <div className="flex-1 bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
             <div className="w-full max-w-md">
                 {/* Card Container */}
-                <div className="bg-white rounded-lg shadow-lg p-8 md:p-10">
+                <div className="bg-white rounded-lg shadow-lg p-5 sm:p-8 md:p-10">
                     {/* Header */}
-                    <div className="mb-8 text-center">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Login</h1>
+                    <div className="mb-6 sm:mb-8 text-center">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Login</h1>
                         <p className="text-gray-600">Welcome back to TurfMate</p>
                     </div>
 
@@ -115,7 +115,7 @@ export default function LoginPage() {
                                 type="text"
                                 id="phone_number"
                                 placeholder="+8801XXXXXXXXX"
-                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${errors.phone_number
+                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition ${errors.phone_number
                                     ? 'border-red-300 bg-red-50'
                                     : 'border-gray-300 bg-white'
                                     }`}
@@ -141,7 +141,7 @@ export default function LoginPage() {
                                     type={showPassword ? 'text' : 'password'}
                                     id="password"
                                     placeholder="Enter your password"
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition pr-12 ${errors.password
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition pr-12 ${errors.password
                                         ? 'border-red-300 bg-red-50'
                                         : 'border-gray-300 bg-white'
                                         }`}
@@ -192,7 +192,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                            className="w-full mt-6 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <>
@@ -230,7 +230,7 @@ export default function LoginPage() {
                             Don&apos;t have an account?{' '}
                             <Link
                                 href="/register"
-                                className="text-blue-600 hover:text-blue-700 font-semibold transition"
+                                className="text-primary-600 hover:text-primary-700 font-semibold transition"
                             >
                                 Register
                             </Link>
