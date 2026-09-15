@@ -3,26 +3,8 @@ from decimal import Decimal
 from typing import Optional
 import uuid
 from sqlmodel import Field
-from sqlalchemy import Numeric, Time, UniqueConstraint
+from sqlalchemy import Numeric, Time
 from app.models.base import BaseUUIDModel
-
-
-class OperatingHours(BaseUUIDModel, table=True):
-    __tablename__ = "operating_hours"
-    __table_args__ = (
-        UniqueConstraint("venue_id", "day_of_week", name="uq_venue_operating_day"),
-    )
-
-    venue_id: uuid.UUID = Field(
-        foreign_key="venues.id",
-        ondelete="CASCADE",
-        index=True,
-        nullable=False,
-    )
-    day_of_week: int = Field(ge=0, le=6, nullable=False, description="0=Monday, 6=Sunday")
-    opening_time: time = Field(sa_type=Time, nullable=False)
-    closing_time: time = Field(sa_type=Time, nullable=False)
-    is_closed: bool = Field(default=False, nullable=False)
 
 
 class PricingRule(BaseUUIDModel, table=True):
@@ -40,7 +22,7 @@ class PricingRule(BaseUUIDModel, table=True):
         ge=0,
         le=6,
         nullable=True,
-        description="Specific day 0-6, or null for every day",
+        description="Specific day 0-6 (0=Mon, 4=Fri), or null for every day",
     )
     start_time: time = Field(sa_type=Time, nullable=False)
     end_time: time = Field(sa_type=Time, nullable=False)

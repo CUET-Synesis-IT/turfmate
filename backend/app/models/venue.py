@@ -1,6 +1,15 @@
+from datetime import time
+from enum import Enum
 from typing import Optional
 from sqlmodel import Field
+from sqlalchemy import Time
 from app.models.base import BaseUUIDModel
+
+
+class FacilityStatus(str, Enum):
+    ACTIVE = "active"
+    MAINTENANCE = "maintenance"
+    INACTIVE = "inactive"
 
 
 class Venue(BaseUUIDModel, table=True):
@@ -17,4 +26,8 @@ class Venue(BaseUUIDModel, table=True):
     longitude: Optional[float] = Field(default=None, nullable=True)
     contact_phone: Optional[str] = Field(default=None, nullable=True)
     contact_email: Optional[str] = Field(default=None, nullable=True)
+    status: FacilityStatus = Field(default=FacilityStatus.ACTIVE, index=True, nullable=False)
+    status_note: Optional[str] = Field(default=None, nullable=True)
+    opening_time: time = Field(default=time(8, 0), sa_type=Time, nullable=False)
+    closing_time: time = Field(default=time(0, 0), sa_type=Time, nullable=False)
     is_active: bool = Field(default=True, nullable=False)

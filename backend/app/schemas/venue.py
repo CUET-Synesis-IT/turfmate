@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Optional
 import uuid
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from app.models.venue import FacilityStatus
 
 
 class VenueBase(BaseModel):
@@ -15,6 +16,10 @@ class VenueBase(BaseModel):
     longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
     contact_phone: Optional[str] = Field(default=None, max_length=20)
     contact_email: Optional[EmailStr] = None
+    status: FacilityStatus = Field(default=FacilityStatus.ACTIVE, description="Facility operational status")
+    status_note: Optional[str] = Field(default=None, description="Note on status (e.g. Closed for rain)")
+    opening_time: time = Field(default=time(8, 0), description="Daily opening time")
+    closing_time: time = Field(default=time(0, 0), description="Daily closing time (00:00 = Midnight)")
 
 
 class VenueCreate(VenueBase):
@@ -38,6 +43,10 @@ class VenueUpdate(BaseModel):
     longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
     contact_phone: Optional[str] = Field(default=None, max_length=20)
     contact_email: Optional[EmailStr] = None
+    status: Optional[FacilityStatus] = None
+    status_note: Optional[str] = None
+    opening_time: Optional[time] = None
+    closing_time: Optional[time] = None
     is_active: Optional[bool] = None
 
 

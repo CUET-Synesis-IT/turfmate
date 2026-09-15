@@ -4,6 +4,7 @@ from typing import Optional
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 from app.models.court import SportType
+from app.models.venue import FacilityStatus
 
 
 class CourtBase(BaseModel):
@@ -13,6 +14,8 @@ class CourtBase(BaseModel):
     court_size: Optional[str] = Field(default=None, max_length=50, description="Size/capacity (e.g. 5-a-side, 7-a-side)")
     base_price_per_hour: Decimal = Field(default=Decimal("1000.00"), ge=0, description="Base hourly price in BDT")
     is_indoor: bool = Field(default=False, description="Whether court is indoor or covered")
+    status: FacilityStatus = Field(default=FacilityStatus.ACTIVE, description="Operational status: active, maintenance, inactive")
+    status_note: Optional[str] = Field(default=None, description="Status details (e.g. Grass patching until Friday)")
 
 
 class CourtCreate(CourtBase):
@@ -26,6 +29,8 @@ class CourtUpdate(BaseModel):
     court_size: Optional[str] = Field(default=None, max_length=50)
     base_price_per_hour: Optional[Decimal] = Field(default=None, ge=0)
     is_indoor: Optional[bool] = None
+    status: Optional[FacilityStatus] = None
+    status_note: Optional[str] = None
     is_active: Optional[bool] = None
 
 

@@ -5,6 +5,7 @@ import uuid
 from sqlmodel import Field
 from sqlalchemy import Numeric, UniqueConstraint
 from app.models.base import BaseUUIDModel
+from app.models.venue import FacilityStatus
 
 
 class SportType(str, Enum):
@@ -36,4 +37,6 @@ class Court(BaseUUIDModel, table=True):
         nullable=False,
     )
     is_indoor: bool = Field(default=False, nullable=False)
+    status: FacilityStatus = Field(default=FacilityStatus.ACTIVE, index=True, nullable=False)
+    status_note: Optional[str] = Field(default=None, nullable=True)
     is_active: bool = Field(default=True, nullable=False)
