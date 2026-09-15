@@ -1,7 +1,7 @@
 from typing import Optional
 import uuid
 from sqlmodel import Session, or_, select
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserUpdate
 
 
@@ -45,6 +45,7 @@ def create_user(
         email=user_in.email.strip().lower() if user_in.email else None,
         full_name=user_in.full_name,
         hashed_password=hashed_password,
+        role=user_in.role or UserRole.CUSTOMER,
         avatar_url=user_in.avatar_url,
     )
     session.add(db_user)

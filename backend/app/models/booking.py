@@ -14,6 +14,7 @@ class BookingStatus(str, Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
+    BLOCKED = "blocked"
 
 
 class Booking(BaseUUIDModel, table=True):

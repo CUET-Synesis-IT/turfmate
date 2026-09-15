@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 import uuid
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
@@ -13,6 +14,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(min_length=6, max_length=128)
+    role: Optional[UserRole] = UserRole.CUSTOMER
 
 
 class UserUpdate(BaseModel):
@@ -20,11 +22,13 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     avatar_url: Optional[str] = None
+    role: Optional[UserRole] = None
     password: Optional[str] = Field(default=None, min_length=6, max_length=128)
 
 
 class UserResponse(UserBase):
     id: uuid.UUID
+    role: UserRole
     is_active: bool
     is_superuser: bool
     created_at: datetime

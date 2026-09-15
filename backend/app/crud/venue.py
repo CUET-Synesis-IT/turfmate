@@ -10,36 +10,29 @@ def get_venue_by_id(session: Session, venue_id: uuid.UUID) -> Optional[Venue]:
     return session.get(Venue, venue_id)
 
 
-def get_venue_by_slug(
-    session: Session,
-    business_id: uuid.UUID,
-    slug: str,
-) -> Optional[Venue]:
-    """Retrieve a venue by business ID and slug."""
-    statement = select(Venue).where(
-        Venue.business_id == business_id,
-        Venue.slug == slug,
-    )
+def get_venue_by_slug(session: Session, slug: str) -> Optional[Venue]:
+    """Retrieve a venue by slug."""
+    statement = select(Venue).where(Venue.slug == slug)
     return session.exec(statement).first()
 
 
 def list_venues(
     session: Session,
-    business_id: Optional[uuid.UUID] = None,
-    city: Optional[str] = None,
+    district: Optional[str] = None,
+    area: Optional[str] = None,
     is_active: Optional[bool] = True,
     search: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
 ) -> list[Venue]:
-    """List venues with optional filtering by business, city, active status, or text search."""
+    """List venues with optional filtering by district, area, active status, or search query."""
     statement = select(Venue)
 
-    if business_id is not None:
-        statement = statement.where(Venue.business_id == business_id)
+    if district:
+        statement = statement.where(col(Venue.district).ilike(f"%{district.strip()}%"))
 
-    if city:
-        statement = statement.where(col(Venue.city).ilike(f"%{city.strip()}%"))
+    if area:
+        statement = statement.where(col(Venue.area).ilike(f"%{area.strip()}%"))
 
     if is_active is not None:
         statement = statement.where(Venue.is_active == is_active)
@@ -49,7 +42,8 @@ def list_venues(
         statement = statement.where(
             col(Venue.name).ilike(search_pattern)
             | col(Venue.address).ilike(search_pattern)
-            | col(Venue.city).ilike(search_pattern)
+            | col(Venue.area).ilike(search_pattern)
+            | col(Venue.district).ilike(search_pattern)
         )
 
     statement = statement.order_by(col(Venue.created_at).desc()).offset(skip).limit(limit)
@@ -58,14 +52,12 @@ def list_venues(
 
 def create_venue(
     session: Session,
-    business_id: uuid.UUID,
     venue_in: VenueCreate,
     slug: str,
 ) -> Venue:
-    """Create a new venue under a specific business."""
+    """Create a new venue."""
     venue_data = venue_in.model_dump(exclude={"slug"})
     db_venue = Venue(
-        business_id=business_id,
         slug=slug,
         **venue_data,
     )
