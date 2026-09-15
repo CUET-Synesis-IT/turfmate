@@ -13,7 +13,8 @@ from app.schemas.business import (
     BusinessUpdate,
     BusinessWithRoleResponse,
 )
-from app.services import business_service
+from app.schemas.venue import VenueCreate, VenueResponse
+from app.services import business_service, venue_service
 
 router = APIRouter(prefix="/businesses", tags=["businesses"])
 
@@ -203,3 +204,46 @@ def remove_member(
         member_id=member_id,
     )
     return {"message": "Staff member removed successfully."}
+
+
+@router.post(
+    "/{business_id}/venues",
+    response_model=VenueResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new venue under this business (Owner or Manager)",
+)
+def create_business_venue(
+    business_id: uuid.UUID,
+    venue_in: VenueCreate,
+    current_user: CurrentUserDep,
+    session: SessionDep,
+    _member: Annotated[
+        BusinessMember,
+        Depends(require_business_roles([BusinessRole.OWNER, BusinessRole.MANAGER])),
+    ],
+) -> VenueResponse:
+    """Create a new sports venue under this business."""
+    venue = venue_service.create_venue(
+        session=session,
+        business_id=business_id,
+        actor=current_user,
+        venue_in=venue_in,
+    )
+    return VenueResponse.model_validate(venue)
+
+
+@router.get(
+    "/{business_id}/venues",
+    response_model=list[VenueResponse],
+    summary="List all venues for this business",
+)
+def list_business_venues(
+    business_id: uuid.UUID,
+    session: SessionDep,
+) -> list[VenueResponse]:
+    """Retrieve all venues belonging to a specific business."""
+    venues = venue_service.list_business_venues(
+        session=session,
+        business_id=business_id,
+    )
+    return [VenueResponse.model_validate(v) for v in venues]
