@@ -3,8 +3,9 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from app.api.deps import CurrentUserDep, SessionDep, require_roles
 from app.models.user import User, UserRole
+from app.schemas.court import CourtCreate, CourtResponse
 from app.schemas.venue import VenueCreate, VenueResponse, VenueUpdate
-from app.services import venue_service
+from app.services import court_service, venue_service
 
 router = APIRouter(prefix="/venues", tags=["venues"])
 
@@ -108,3 +109,42 @@ def delete_venue(
         soft=soft,
     )
     return VenueResponse.model_validate(venue)
+
+
+@router.post(
+    "/{venue_id}/courts",
+    response_model=CourtResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new court under this venue (Admin only)",
+)
+def create_venue_court(
+    venue_id: uuid.UUID,
+    court_in: CourtCreate,
+    current_admin: Annotated[User, Depends(require_roles([UserRole.ADMIN]))],
+    session: SessionDep,
+) -> CourtResponse:
+    """Create a new playable court/field in this venue. Allowed only for turf Admins."""
+    court = court_service.create_court(
+        session=session,
+        actor=current_admin,
+        venue_id=venue_id,
+        court_in=court_in,
+    )
+    return CourtResponse.model_validate(court)
+
+
+@router.get(
+    "/{venue_id}/courts",
+    response_model=list[CourtResponse],
+    summary="List all courts for this venue",
+)
+def list_venue_courts(
+    venue_id: uuid.UUID,
+    session: SessionDep,
+) -> list[CourtResponse]:
+    """Retrieve all playable courts/fields in this venue."""
+    courts = court_service.list_venue_courts(
+        session=session,
+        venue_id=venue_id,
+    )
+    return [CourtResponse.model_validate(c) for c in courts]
