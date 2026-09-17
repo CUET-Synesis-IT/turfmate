@@ -476,7 +476,7 @@ export default function TeamManager({ currentUser }: TeamManagerProps) {
                                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500 font-mono"
                                 />
                                 <span className="text-[10px] text-zinc-500 mt-1 block">
-                                    At least 8 characters. Operator can change this later.
+                                    At least 6 characters. Operator can change this later.
                                 </span>
                             </div>
 

@@ -337,7 +337,7 @@ export default function RegisterPage() {
                                             {...register('password')}
                                             type={showPassword ? 'text' : 'password'}
                                             id="password"
-                                            placeholder="Min. 8 chars"
+                                            placeholder="Min. 6 chars"
                                             autoComplete="new-password"
                                             className={`w-full pl-10 pr-10 py-3 rounded-2xl border text-sm font-medium text-white bg-zinc-950/80 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all ${errors.password
                                                 ? 'border-red-500 bg-red-950/20 text-red-200 focus:ring-red-500'
