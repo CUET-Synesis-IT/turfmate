@@ -7,7 +7,7 @@ from app.models.user import UserRole
 
 class UserBase(BaseModel):
     phone_number: str = Field(min_length=6, max_length=20, description="Primary user phone number")
-    email: Optional[EmailStr] = Field(default=None, description="Optional user email address")
+    email: Optional[str] = Field(default=None, description="Optional user email address")
     full_name: str = Field(min_length=1, max_length=100)
     avatar_url: Optional[str] = None
 

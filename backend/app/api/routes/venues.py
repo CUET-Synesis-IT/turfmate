@@ -14,17 +14,17 @@ router = APIRouter(prefix="/venues", tags=["venues"])
     "",
     response_model=VenueResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create a new venue (Admin only)",
+    summary="Create a new venue (Admin or Staff)",
 )
 def create_venue(
     venue_in: VenueCreate,
-    current_admin: Annotated[User, Depends(require_roles([UserRole.ADMIN]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.STAFF]))],
     session: SessionDep,
 ) -> VenueResponse:
     """Create a new sports facility/branch for this turf."""
     venue = venue_service.create_venue(
         session=session,
-        actor=current_admin,
+        actor=current_user,
         venue_in=venue_in,
     )
     return VenueResponse.model_validate(venue)
@@ -115,18 +115,18 @@ def delete_venue(
     "/{venue_id}/courts",
     response_model=CourtResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create a new court under this venue (Admin only)",
+    summary="Create a new court under this venue (Admin or Staff)",
 )
 def create_venue_court(
     venue_id: uuid.UUID,
     court_in: CourtCreate,
-    current_admin: Annotated[User, Depends(require_roles([UserRole.ADMIN]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.STAFF]))],
     session: SessionDep,
 ) -> CourtResponse:
-    """Create a new playable court/field in this venue. Allowed only for turf Admins."""
+    """Create a new playable court/field in this venue. Allowed for turf Admins or Staff."""
     court = court_service.create_court(
         session=session,
-        actor=current_admin,
+        actor=current_user,
         venue_id=venue_id,
         court_in=court_in,
     )

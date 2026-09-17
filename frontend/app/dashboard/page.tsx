@@ -54,12 +54,16 @@ export default function DashboardPage() {
     // Copy reference feedback
     const [copiedRef, setCopiedRef] = useState<string | null>(null);
 
-    // Auth Guard
+    // Auth Guard: Redirect unauthenticated to login; redirect superuser/admin/staff to /admin
     useEffect(() => {
-        if (isHydrated && !isAuthenticated()) {
-            router.push('/login?redirect=/dashboard');
+        if (isHydrated) {
+            if (!isAuthenticated()) {
+                router.push('/login?redirect=/dashboard');
+            } else if (user && (user.is_superuser || user.role === 'admin' || user.role === 'staff')) {
+                router.replace('/admin');
+            }
         }
-    }, [isHydrated, isAuthenticated, router]);
+    }, [isHydrated, isAuthenticated, user, router]);
 
     // Load customer bookings
     const fetchBookings = () => {

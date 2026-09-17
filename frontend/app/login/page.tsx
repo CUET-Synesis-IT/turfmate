@@ -65,8 +65,13 @@ export default function LoginPage() {
             // Store tokens in Zustand auth store & fetch profile
             await login(response);
 
-            // Redirect to home
-            router.push('/');
+            // Route superuser, admin, or staff directly to the admin console
+            const currentUser = useAuthStore.getState().user;
+            if (currentUser?.is_superuser || currentUser?.role === 'admin' || currentUser?.role === 'staff') {
+                router.push('/admin');
+            } else {
+                router.push('/');
+            }
         } catch (error) {
             setIsLoading(false);
 
