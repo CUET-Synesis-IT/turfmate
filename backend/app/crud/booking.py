@@ -2,9 +2,30 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 import uuid
 from sqlmodel import Session, col, func, select
+from app.models.base import utc_now
 from app.models.booking import Booking, BookingStatus
 from app.models.court import Court
 from app.models.user import User
+
+
+def expire_stale_pending_bookings(session: Session, hold_minutes: int = 10) -> int:
+    """Find and cancel pending bookings whose payment countdown window has expired."""
+    cutoff = utc_now() - timedelta(minutes=hold_minutes)
+    statement = select(Booking).where(
+        Booking.status == BookingStatus.PENDING,
+        Booking.created_at < cutoff,
+    )
+    stale_bookings = list(session.exec(statement).all())
+    now = utc_now()
+    for b in stale_bookings:
+        b.status = BookingStatus.CANCELLED
+        b.cancellation_reason = f"Payment session timed out ({hold_minutes}-minute limit exceeded)"
+        b.cancelled_at = now
+        session.add(b)
+
+    if stale_bookings:
+        session.commit()
+    return len(stale_bookings)
 
 
 def get_booking_by_id(session: Session, booking_id: uuid.UUID) -> Optional[Booking]:

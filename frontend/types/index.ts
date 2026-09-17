@@ -71,7 +71,7 @@ export interface SlotInfo {
     end_time: string;
     price: number;
     is_available: boolean;
-    status: 'available' | 'booked' | 'blocked' | 'maintenance';
+    status: 'available' | 'booked' | 'pending' | 'blocked' | 'maintenance';
     reason?: string | null;
     period?: 'morning' | 'afternoon' | 'prime_night';
 }
@@ -115,6 +115,7 @@ export interface BookingResponse {
     internal_notes?: string | null;
     cancellation_reason?: string | null;
     cancelled_at?: string | null;
+    expires_at?: string | null;
     created_at: string;
 }
 

@@ -206,6 +206,18 @@ def validate_sslcommerz_payment(
                 "notes": f"SSLCommerz validation rejected: status={validation_status}",
             },
         )
+        # Cancel booking and release slots immediately
+        booking = booking_crud.get_booking_by_id(session, payment.booking_id)
+        if booking and booking.status == BookingStatus.PENDING:
+            booking_crud.update_booking(
+                session=session,
+                booking=booking,
+                update_data={
+                    "status": BookingStatus.CANCELLED,
+                    "cancellation_reason": f"Payment validation rejected: {validation_status}",
+                    "cancelled_at": utc_now(),
+                },
+            )
         return payment
 
 
@@ -221,4 +233,16 @@ def handle_failed_payment(session: Session, tran_id: str, reason: str = "Payment
                 "notes": reason,
             },
         )
+        # Also cancel the pending booking so slots are immediately released
+        booking = booking_crud.get_booking_by_id(session, payment.booking_id)
+        if booking and booking.status == BookingStatus.PENDING:
+            booking_crud.update_booking(
+                session=session,
+                booking=booking,
+                update_data={
+                    "status": BookingStatus.CANCELLED,
+                    "cancellation_reason": reason,
+                    "cancelled_at": utc_now(),
+                },
+            )
     return payment

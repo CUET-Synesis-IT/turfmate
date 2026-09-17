@@ -102,6 +102,7 @@ class BookingResponse(BaseModel):
     cancellation_reason: Optional[str] = None
     cancelled_at: Optional[datetime] = None
     created_by_user_id: Optional[uuid.UUID] = None
+    expires_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

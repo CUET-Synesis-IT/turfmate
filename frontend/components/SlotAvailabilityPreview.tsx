@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Court, SlotInfo } from '@/types';
+import { Court, SlotInfo, BookingResponse } from '@/types';
 import { bookingService } from '@/services/bookingService';
 import { paymentService } from '@/services/paymentService';
 import { useAuthStore } from '@/lib/auth-store';
+import BookingHoldPaymentModal from '@/components/BookingHoldPaymentModal';
 import {
     Calendar as CalendarIcon,
     Clock,
@@ -106,6 +107,10 @@ export default function SlotAvailabilityPreview({
     const [bookingError, setBookingError] = useState<string | null>(null);
     const [customerNotes, setCustomerNotes] = useState<string>('');
     const [showNotesInput, setShowNotesInput] = useState<boolean>(false);
+
+    // 10-Minute Hold Payment Modal State
+    const [pendingHoldBooking, setPendingHoldBooking] = useState<BookingResponse | null>(null);
+    const [showHoldModal, setShowHoldModal] = useState<boolean>(false);
 
     const currentCourt = useMemo(() => {
         return courts.find((c) => c.id === activeCourtId) || courts[0];
@@ -236,6 +241,43 @@ export default function SlotAvailabilityPreview({
         fetchSlots(activeCourtId, activeDate);
     }, [activeCourtId, activeDate]);
 
+    // Background polling: quietly sync slot availability every 20 seconds
+    useEffect(() => {
+        if (!activeCourtId || !activeDate) return;
+
+        const pollInterval = setInterval(() => {
+            bookingService
+                .getAvailability(activeCourtId, activeDate)
+                .then((data) => {
+                    const enriched = (data.slots || []).map((slot, index) => ({
+                        ...slot,
+                        id: `${activeCourtId}-${activeDate}-${index}`,
+                        court_id: activeCourtId,
+                        court_name: data.court_name || currentCourt?.name || 'Pitch',
+                        period: getSlotPeriod(slot.start_time),
+                    }));
+                    setRawSlots(enriched);
+
+                    // Check if any currently selected slots are now taken or held by someone else
+                    setSelectedSlots((prevSelected) => {
+                        const stillAvailable = prevSelected.filter((sel) => {
+                            const fresh = enriched.find((s) => s.start_time === sel.start_time);
+                            return fresh && fresh.is_available;
+                        });
+                        if (stillAvailable.length < prevSelected.length) {
+                            setBookingError('A selected slot was just reserved or held for payment by another player.');
+                        }
+                        return stillAvailable;
+                    });
+                })
+                .catch(() => {
+                    // Quiet background catch
+                });
+        }, 20000);
+
+        return () => clearInterval(pollInterval);
+    }, [activeCourtId, activeDate, currentCourt?.name]);
+
     // Filter slots by time period
     const filteredSlots = useMemo(() => {
         return rawSlots.filter((slot) => {
@@ -363,23 +405,17 @@ export default function SlotAvailabilityPreview({
                 customer_notes: customerNotes.trim() ? customerNotes.trim() : undefined,
             });
 
-            // Trigger SSLCOMMERZ checkout
-            setBookingStepMessage('Connecting to SSLCOMMERZ Secure Gateway...');
-            const sslRes = await paymentService.initiateSSLCommerz(booking.id);
-
-            if (sslRes.gateway_url) {
-                setBookingStepMessage('Redirecting to SSLCOMMERZ checkout...');
-                window.location.href = sslRes.gateway_url;
-            } else {
-                throw new Error('SSLCOMMERZ did not return a valid gateway checkout URL.');
-            }
+            // Launch 10-Minute Hold Payment Modal with live timer
+            setPendingHoldBooking(booking);
+            setShowHoldModal(true);
+            setIsBookingLoading(false);
         } catch (err: any) {
             console.error('Booking checkout error:', err);
             const status = err?.response?.status;
             const detail = err?.response?.data?.detail;
 
             if (status === 409) {
-                setBookingError('One or more selected slots were just booked by another team. Schedule has been updated.');
+                setBookingError('One or more selected slots were just held or booked by another team. Schedule has been updated.');
                 fetchSlots(activeCourtId, activeDate);
             } else if (detail) {
                 setBookingError(typeof detail === 'string' ? detail : JSON.stringify(detail));
@@ -640,17 +676,21 @@ export default function SlotAvailabilityPreview({
                                 (Click multiple consecutive slots for a longer single booking)
                             </span>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
                             <span className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full border border-emerald-500 bg-emerald-50 dark:bg-emerald-950" />
                                 Available
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                                Held / Checkout
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
                                 Reserved / Past
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                                <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
                                 Maintenance
                             </span>
                         </div>
@@ -686,6 +726,7 @@ export default function SlotAvailabilityPreview({
                             {filteredSlots.map((slot, index) => {
                                 const isPast = isSlotInPast(slot.start_time);
                                 const isMaintenance = slot.status === 'maintenance';
+                                const isPending = slot.status === 'pending';
                                 const isBooked = slot.status === 'booked' || slot.status === 'blocked' || isPast;
 
                                 const selectedIndex = selectedSlots.findIndex((s) => s.id === slot.id);
@@ -698,23 +739,28 @@ export default function SlotAvailabilityPreview({
                                 return (
                                     <button
                                         key={slot.id || index}
-                                        disabled={isBooked || isMaintenance}
+                                        disabled={isBooked || isMaintenance || isPending}
                                         onClick={() => handleSlotClick(slot)}
-                                        className={`relative p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between ${isMaintenance
-                                            ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 cursor-not-allowed opacity-80'
-                                            : isBooked
+                                        className={`relative p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between ${
+                                            isMaintenance
+                                                ? 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 cursor-not-allowed opacity-80'
+                                                : isPending
+                                                ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 dark:text-amber-300 cursor-not-allowed opacity-90'
+                                                : isBooked
                                                 ? 'bg-zinc-100/80 dark:bg-zinc-800/30 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed opacity-60'
                                                 : isSelected
-                                                    ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white border-emerald-500 ring-2 ring-emerald-400 shadow-xl shadow-emerald-900/40 scale-[1.03] cursor-pointer'
-                                                    : 'bg-white dark:bg-zinc-800/70 border-zinc-200 dark:border-zinc-700/80 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-900/10 cursor-pointer'
-                                            }`}
+                                                ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white border-emerald-500 ring-2 ring-emerald-400 shadow-xl shadow-emerald-900/40 scale-[1.03] cursor-pointer'
+                                                : 'bg-white dark:bg-zinc-800/70 border-zinc-200 dark:border-zinc-700/80 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-900/10 cursor-pointer'
+                                        }`}
                                     >
                                         {/* Top Row: Time & Period Icon */}
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className={`text-sm font-black ${isSelected ? 'text-white' : isBooked || isMaintenance ? 'text-zinc-400 dark:text-zinc-500' : 'text-gray-950 dark:text-white'}`}>
+                                            <span className={`text-sm font-black ${isSelected ? 'text-white' : isPending ? 'text-amber-400' : isBooked || isMaintenance ? 'text-zinc-400 dark:text-zinc-500' : 'text-gray-950 dark:text-white'}`}>
                                                 {formattedStart}
                                             </span>
-                                            {isNight ? (
+                                            {isPending ? (
+                                                <Clock size={14} className="text-amber-400 animate-pulse" />
+                                            ) : isNight ? (
                                                 <Moon size={14} className={isSelected ? 'text-emerald-200' : isBooked ? 'text-zinc-300 dark:text-zinc-700' : 'text-emerald-500'} />
                                             ) : (
                                                 <Sun size={14} className={isSelected ? 'text-emerald-200' : isBooked ? 'text-zinc-300 dark:text-zinc-700' : 'text-amber-500'} />
@@ -723,38 +769,43 @@ export default function SlotAvailabilityPreview({
 
                                         {/* Middle Row: Court Name */}
                                         <div className="text-xs truncate mb-3">
-                                            <span className={isSelected ? 'text-emerald-100 font-medium' : isBooked || isMaintenance ? 'text-zinc-400 dark:text-zinc-500' : 'text-gray-600 dark:text-zinc-400 font-medium'}>
+                                            <span className={isSelected ? 'text-emerald-100 font-medium' : isPending ? 'text-amber-300/80 font-medium' : isBooked || isMaintenance ? 'text-zinc-400 dark:text-zinc-500' : 'text-gray-600 dark:text-zinc-400 font-medium'}>
                                                 {slot.court_name || currentCourt?.name}
                                             </span>
                                         </div>
 
                                         {/* Bottom Row: Price & Status */}
                                         <div className="flex items-center justify-between pt-2.5 border-t border-zinc-100 dark:border-zinc-700/60">
-                                            <span className={`text-xs font-black ${isSelected ? 'text-white' : isBooked ? 'text-zinc-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                            <span className={`text-xs font-black ${isSelected ? 'text-white' : isPending ? 'text-amber-400' : isBooked ? 'text-zinc-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                                 ৳{Number(slot.price).toLocaleString()}
                                             </span>
 
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isMaintenance
-                                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                                                : isPast
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                                isMaintenance
+                                                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
+                                                    : isPending
+                                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                                    : isPast
                                                     ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
                                                     : isBooked
-                                                        ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
-                                                        : isSelected
-                                                            ? 'bg-white/25 text-white'
-                                                            : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                                                }`}>
+                                                    ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+                                                    : isSelected
+                                                    ? 'bg-white/25 text-white'
+                                                    : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
+                                            }`}>
                                                 {isMaintenance
                                                     ? 'Maintenance'
+                                                    : isPending
+                                                    ? 'Held'
                                                     : isPast
-                                                        ? 'Past'
-                                                        : isBooked
-                                                            ? 'Booked'
-                                                            : isSelected
-                                                                ? selectedCount > 1
-                                                                    ? `Hour ${selectedIndex + 1}`
-                                                                    : 'Selected'
-                                                                : 'Available'}
+                                                    ? 'Past'
+                                                    : isBooked
+                                                    ? 'Booked'
+                                                    : isSelected
+                                                    ? selectedCount > 1
+                                                        ? `Hour ${selectedIndex + 1}`
+                                                        : 'Selected'
+                                                    : 'Available'}
                                             </span>
                                         </div>
                                     </button>
@@ -906,6 +957,26 @@ export default function SlotAvailabilityPreview({
                             </div>
                         )}
                     </div>
+                )}
+
+                {/* 10-Minute Hold & Payment Countdown Modal */}
+                {showHoldModal && pendingHoldBooking && (
+                    <BookingHoldPaymentModal
+                        booking={pendingHoldBooking}
+                        venueName={venueName || 'TurfMate Arena'}
+                        courtName={currentCourt?.name || 'Pitch'}
+                        onClose={() => {
+                            setShowHoldModal(false);
+                            setPendingHoldBooking(null);
+                            fetchSlots(activeCourtId, activeDate);
+                        }}
+                        onCancelled={() => {
+                            setShowHoldModal(false);
+                            setPendingHoldBooking(null);
+                            setSelectedSlots([]);
+                            fetchSlots(activeCourtId, activeDate);
+                        }}
+                    />
                 )}
             </div>
         </div>
