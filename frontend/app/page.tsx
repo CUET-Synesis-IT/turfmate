@@ -81,6 +81,7 @@ export default function Home() {
                         src="/hero-turf.jpg"
                         alt="TurfMate Arena Floodlit Football Pitch at Night"
                         fill
+                        sizes="100vw"
                         priority
                         className="object-cover object-center brightness-70 scale-105 animate-in fade-in zoom-in duration-1000"
                     />
