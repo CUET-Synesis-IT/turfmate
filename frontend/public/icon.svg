@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- Rich Stadium Night Gradient -->
+    <linearGradient id="tm-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="50%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+
+    <!-- Neon Turf Glow Gradient -->
+    <linearGradient id="tm-neon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Crisp Monogram Metal Gradient -->
+    <linearGradient id="tm-metal" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+
+    <!-- Soccer Ball Texture Gradient -->
+    <linearGradient id="tm-ball" x1="20%" y1="20%" x2="80%" y2="80%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="80%" stop-color="#cbd5e1" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow -->
+    <filter id="tm-depth" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- 1. Outer Stadium Squircle with Neon Emerald Border -->
+  <rect x="4" y="4" width="120" height="120" rx="32" fill="url(#tm-bg-grad)" stroke="url(#tm-neon)" stroke-width="4" />
+
+  <!-- 2. Subtle Pitch Architecture (Center circle & midfield line) -->
+  <line x1="4" y1="64" x2="124" y2="64" stroke="#34d399" stroke-opacity="0.25" stroke-width="2.5" />
+  <circle cx="64" cy="64" r="32" stroke="#34d399" stroke-opacity="0.25" stroke-width="2.5" fill="none" />
+  <circle cx="64" cy="64" r="5" fill="#34d399" fill-opacity="0.4" />
+
+  <!-- 3. Dynamic Forward Pitch Arc (Athletic speed line) -->
+  <path d="M18 102 C38 116, 90 116, 110 102" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-opacity="0.3" fill="none"/>
+
+  <!-- 4. Iconic Athletic 'T' Monogram with Chamfered Sports Angles -->
+  <g filter="url(#tm-depth)">
+    <!-- Top Horizontal Crossbar with aerodynamic angled cuts -->
+    <path d="M22 28 L106 28 L98 46 L30 46 Z" fill="url(#tm-metal)" />
+    
+    <!-- Vertical Pillar with angled base -->
+    <path d="M52 46 L76 46 L76 96 L64 104 L52 96 Z" fill="url(#tm-metal)" />
+
+    <!-- Neon Accent Inset Stripe across the Crossbar -->
+    <path d="M36 37 L92 37" stroke="url(#tm-neon)" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+
+  <!-- 5. Floating Modern Match Ball at the Top Center -->
+  <g transform="translate(64, 28)" filter="url(#tm-depth)">
+    <!-- Outer Ball Sphere -->
+    <circle cx="0" cy="0" r="14" fill="url(#tm-ball)" stroke="#064e3b" stroke-width="2.5" />
+    
+    <!-- Central Classic Football Pentagon -->
+    <polygon points="0,-5 5,-1.5 3,4.5 -3,4.5 -5,-1.5" fill="#064e3b" />
+    
+    <!-- Seams extending to edge -->
+    <line x1="0" y1="-5" x2="0" y2="-14" stroke="#064e3b" stroke-width="2" stroke-linecap="round" />
+    <line x1="5" y1="-1.5" x2="13.5" y2="-4.5" stroke="#064e3b" stroke-width="2" stroke-linecap="round" />
+    <line x1="3" y1="4.5" x2="8.5" y2="12" stroke="#064e3b" stroke-width="2" stroke-linecap="round" />
+    <line x1="-3" y1="4.5" x2="-8.5" y2="12" stroke="#064e3b" stroke-width="2" stroke-linecap="round" />
+    <line x1="-5" y1="-1.5" x2="-13.5" y2="-4.5" stroke="#064e3b" stroke-width="2" stroke-linecap="round" />
+    
+    <!-- Highlight shine -->
+    <ellipse cx="-4" cy="-5" rx="3.5" ry="2" fill="#ffffff" fill-opacity="0.6" transform="rotate(-30, -4, -5)" />
+  </g>
+</svg>

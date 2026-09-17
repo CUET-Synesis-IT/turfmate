@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, ChevronDown, LogOut, ShieldCheck, Phone, Calendar, Users, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { User } from '@/lib/types';
+import TurfMateLogo from '@/components/TurfMateLogo';
 
 interface NavLinkProps {
     href: string;
@@ -271,17 +272,7 @@ export default function Navbar() {
                             }
                         }}
                     >
-                        <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-400/30 group-hover:scale-105 transition-transform">
-                            <span className="text-white font-black text-xl tracking-tighter">T</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-xl font-black text-white tracking-tight leading-none">
-                                Turf<span className="text-emerald-400">Mate</span>
-                            </span>
-                            <span className="text-[10px] font-semibold text-zinc-400 tracking-wider uppercase leading-tight">
-                                Arena & Pitches
-                            </span>
-                        </div>
+                        <TurfMateLogo size={36} showText={true} />
                     </Link>
 
                     {/* Desktop Navigation Links */}

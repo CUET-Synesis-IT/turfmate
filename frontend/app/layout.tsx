@@ -15,8 +15,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TurfMate - Book Your Turf Court",
-  description: "Book football courts online at the best venues near you",
+  title: "TurfMate - Premier Football & Sports Turf Booking",
+  description: "Book FIFA-quality football pitches and sports turfs online. Real-time slot locking, instant SSLCOMMERZ payments, and floodlit night matches.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

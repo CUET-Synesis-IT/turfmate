@@ -12,6 +12,7 @@ import { Eye, EyeOff, Lock, Phone, AlertCircle, Loader2, Sparkles, Star, ShieldC
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/lib/auth-store';
 import { LoginErrorResponse, LoginErrorDetail } from '@/lib/types';
+import TurfMateLogo from '@/components/TurfMateLogo';
 
 // Zod validation schema allowing standard 11-digit BD mobile number or email
 const loginSchema = z.object({
@@ -117,10 +118,9 @@ export default function LoginPage() {
 
                     {/* Top Branding */}
                     <div className="relative z-10">
-                        <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-full mb-6">
-                            <Sparkles size={13} className="text-emerald-400" />
-                            <span>GEC Circle • Chattogram</span>
-                        </div>
+                        <Link href="/" className="inline-block mb-6 group cursor-pointer">
+                            <TurfMateLogo size={42} showText={true} />
+                        </Link>
                         <h2 className="text-3xl font-black text-white leading-tight tracking-tight">
                             The Premier <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
@@ -168,6 +168,13 @@ export default function LoginPage() {
                 {/* Right Form Panel */}
                 <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-between bg-zinc-900/60">
                     <div>
+                        {/* Mobile Logo Link */}
+                        <div className="lg:hidden flex justify-center mb-6">
+                            <Link href="/" className="inline-block group cursor-pointer">
+                                <TurfMateLogo size={36} showText={true} />
+                            </Link>
+                        </div>
+
                         {/* Tab Switcher */}
                         <div className="flex items-center p-1 bg-zinc-950 rounded-2xl border border-zinc-800 mb-8 max-w-xs mx-auto lg:mx-0">
                             <button

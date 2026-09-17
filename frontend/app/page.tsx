@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
     Calendar,
-    Sparkles,
     ArrowRight,
     Star,
     Trophy,
@@ -18,6 +17,7 @@ import VenuePitchExplorer from '@/components/VenuePitchExplorer';
 import SlotAvailabilityPreview from '@/components/SlotAvailabilityPreview';
 import AmenitiesSection from '@/components/AmenitiesSection';
 import FaqAccordion from '@/components/FaqAccordion';
+import TurfMateLogo from '@/components/TurfMateLogo';
 
 export default function Home() {
     const [venues, setVenues] = useState<Venue[]>([]);
@@ -91,10 +91,10 @@ export default function Home() {
                 </div>
 
                 <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 flex flex-col items-center text-center">
-                    {/* Glowing Location & Facility Badge */}
-                    <div className="inline-flex items-center gap-2 bg-emerald-500/15 backdrop-blur-xl border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full mb-6 shadow-lg shadow-emerald-950/50 animate-in slide-in-from-top-4 duration-700">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                        <Sparkles size={14} className="text-emerald-400" />
+                    {/* Glowing Location & Facility Badge with Brand Logo */}
+                    <div className="inline-flex items-center gap-3 bg-zinc-950/70 backdrop-blur-xl border border-emerald-500/30 text-emerald-300 text-xs sm:text-sm font-bold px-4 py-2 rounded-full mb-6 shadow-xl shadow-emerald-950/60 animate-in slide-in-from-top-4 duration-700">
+                        <TurfMateLogo size={22} showText={false} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                         <span>{activeVenue ? `${activeVenue.area} • ${activeVenue.district}'s Premier Arena` : 'Premier Sports Turf Arenas'}</span>
                     </div>
 

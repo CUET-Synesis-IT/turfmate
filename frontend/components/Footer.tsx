@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MapPin, Phone, Mail, Share2, Heart, MessageCircle } from 'lucide-react';
+import TurfMateLogo from '@/components/TurfMateLogo';
 
 export default function Footer() {
     const currentYear = new Date().getFullYear();
@@ -11,11 +12,8 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 mb-8">
                     {/* Column 1: Brand */}
                     <div className="flex flex-col">
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-lg">T</span>
-                            </div>
-                            <span className="text-xl font-bold text-white">TurfMate</span>
+                        <div className="mb-3">
+                            <TurfMateLogo size={32} showText={true} />
                         </div>
                         <p className="text-sm text-gray-400 mb-6">
                             Book your turf. Play your game.
@@ -61,26 +59,34 @@ export default function Footer() {
                             </li>
                             <li>
                                 <Link
-                                    href="/venues"
-                                    className="text-gray-400 hover:text-primary-500 transition-colors"
+                                    href="/#venues-section"
+                                    className="text-gray-400 hover:text-emerald-400 transition-colors"
                                 >
-                                    Venues
+                                    Arenas & Pitches
                                 </Link>
                             </li>
                             <li>
                                 <Link
-                                    href="/about"
-                                    className="text-gray-400 hover:text-primary-500 transition-colors"
+                                    href="/#availability-section"
+                                    className="text-gray-400 hover:text-emerald-400 transition-colors"
                                 >
-                                    About Us
+                                    Live Slots
                                 </Link>
                             </li>
                             <li>
                                 <Link
-                                    href="/contact"
-                                    className="text-gray-400 hover:text-primary-500 transition-colors"
+                                    href="/#amenities-section"
+                                    className="text-gray-400 hover:text-emerald-400 transition-colors"
                                 >
-                                    Contact Us
+                                    Facility Amenities
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href="/#faqs-section"
+                                    className="text-gray-400 hover:text-emerald-400 transition-colors"
+                                >
+                                    FAQs
                                 </Link>
                             </li>
                         </ul>
@@ -92,8 +98,8 @@ export default function Footer() {
                         <ul className="space-y-3">
                             <li>
                                 <Link
-                                    href="#faq"
-                                    className="text-gray-400 hover:text-primary-500 transition-colors"
+                                    href="/#faqs-section"
+                                    className="text-gray-400 hover:text-emerald-400 transition-colors"
                                 >
                                     FAQ
                                 </Link>
