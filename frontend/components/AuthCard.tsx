@@ -284,8 +284,8 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                         </div>
                     </div>
 
-                    {/* Center Clean Switch Action (Aesthetic, Uncongested) */}
-                    <div className="relative z-10 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-md space-y-3 shadow-xl">
+                    {/* Center Clean Switch Action */}
+                    {/* <div className="relative z-10 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-md space-y-3 shadow-xl">
                         <p className="text-xs font-semibold text-emerald-400 tracking-wide uppercase">
                             {isLogin ? 'New to TurfMate?' : 'Already Registered?'}
                         </p>
@@ -304,7 +304,7 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                             <span>{isLogin ? 'Register New Account' : 'Sign In'}</span>
                             <ArrowRight size={15} />
                         </button>
-                    </div>
+                    </div> */}
 
                     {/* Bottom Feature Badges */}
                     <div className="relative z-10 flex items-center justify-between text-[11px] text-zinc-400 pt-3 border-t border-white/10 font-normal">
