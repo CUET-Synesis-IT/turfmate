@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useMemo, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
 import { venueService } from '@/services/venueService';
@@ -18,13 +18,8 @@ function AdminDeskContent() {
     const { user, isAuthenticated, isHydrated } = useAuthStore();
 
     const tabParam = searchParams.get('tab') as AdminTab | null;
-    const [activeTab, setActiveTab] = useState<AdminTab>(tabParam || 'fixtures');
-
-    useEffect(() => {
-        if (tabParam && ['fixtures', 'venues', 'pricing', 'team'].includes(tabParam)) {
-            setActiveTab(tabParam);
-        }
-    }, [tabParam]);
+    const [selectedTab, setSelectedTab] = useState<AdminTab>('fixtures');
+    const activeTab: AdminTab = (tabParam && ['fixtures', 'venues', 'pricing', 'team'].includes(tabParam)) ? tabParam : selectedTab;
 
     // Shared venue & court data
     const [venues, setVenues] = useState<Venue[]>([]);
@@ -44,7 +39,6 @@ function AdminDeskContent() {
 
     // Fetch venues and courts for management desks
     const loadVenuesAndCourts = useCallback(async () => {
-        setIsLoadingData(true);
         try {
             const venueData = await venueService.getVenues();
             setVenues(venueData);
@@ -62,7 +56,9 @@ function AdminDeskContent() {
 
     useEffect(() => {
         if (isHydrated && isAuthenticated() && isStaffOrAdmin) {
-            loadVenuesAndCourts();
+            void Promise.resolve().then(() => {
+                loadVenuesAndCourts();
+            });
         }
     }, [isHydrated, isAuthenticated, isStaffOrAdmin, loadVenuesAndCourts]);
 
@@ -132,12 +128,18 @@ function AdminDeskContent() {
                     <div className="flex items-center gap-3">
                         <AdminNavTabs
                             activeTab={activeTab}
-                            onChangeTab={setActiveTab}
+                            onChangeTab={(tab) => {
+                                setSelectedTab(tab);
+                                router.replace(`/admin?tab=${tab}`, { scroll: false });
+                            }}
                             isSuperuser={isSuperuser}
                             isAdmin={isAdmin}
                         />
                         <button
-                            onClick={loadVenuesAndCourts}
+                            onClick={() => {
+                                setIsLoadingData(true);
+                                loadVenuesAndCourts();
+                            }}
                             disabled={isLoadingData}
                             className="p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-2xl text-zinc-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
                             title="Refresh facility data"

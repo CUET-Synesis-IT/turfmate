@@ -6,7 +6,6 @@ import {
     Shirt,
     Coffee,
     Sparkles,
-    Car
 } from 'lucide-react';
 
 const amenities = [

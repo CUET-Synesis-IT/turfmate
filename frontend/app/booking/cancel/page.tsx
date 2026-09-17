@@ -7,7 +7,6 @@ import {
     AlertTriangle,
     ArrowRight,
     RefreshCw,
-    PhoneCall,
     Home,
     Loader2
 } from 'lucide-react';

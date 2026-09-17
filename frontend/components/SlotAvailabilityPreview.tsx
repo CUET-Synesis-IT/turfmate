@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Court, SlotInfo, BookingResponse } from '@/types';
 import { bookingService } from '@/services/bookingService';
-import { paymentService } from '@/services/paymentService';
 import { useAuthStore } from '@/lib/auth-store';
 import BookingHoldPaymentModal from '@/components/BookingHoldPaymentModal';
 import {
@@ -13,7 +12,6 @@ import {
     Sun,
     Moon,
     Check,
-    CreditCard,
     ShieldCheck,
     Banknote,
     Loader2,
@@ -195,25 +193,22 @@ export default function SlotAvailabilityPreview({
         }
     };
 
+    const [nowTimestamp] = useState<number>(() => Date.now());
+
     // Helper: check if a slot is in the past
     const isSlotInPast = (startTimeIso: string) => {
         if (!startTimeIso) return false;
         try {
             const slotTime = new Date(startTimeIso).getTime();
-            return slotTime < Date.now() - 5 * 60 * 1000;
+            return slotTime < nowTimestamp - 5 * 60 * 1000;
         } catch {
             return false;
         }
     };
 
     // Fetch live availability from backend when court or date changes
-    const fetchSlots = (courtId: string, dateStr: string) => {
+    const fetchSlots = useCallback((courtId: string, dateStr: string) => {
         if (!courtId) return;
-
-        setIsLoading(true);
-        setFetchError(null);
-        setSelectedSlots([]);
-        setBookingError(null);
 
         bookingService
             .getAvailability(courtId, dateStr)
@@ -227,7 +222,7 @@ export default function SlotAvailabilityPreview({
                 }));
                 setRawSlots(enriched);
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
                 console.error('Failed to load slots from API:', err);
                 setFetchError('Unable to load live slots right now. Please verify backend connection.');
                 setRawSlots([]);
@@ -235,11 +230,11 @@ export default function SlotAvailabilityPreview({
             .finally(() => {
                 setIsLoading(false);
             });
-    };
+    }, [currentCourt?.name]);
 
     useEffect(() => {
         fetchSlots(activeCourtId, activeDate);
-    }, [activeCourtId, activeDate]);
+    }, [activeCourtId, activeDate, fetchSlots]);
 
     // Background polling: quietly sync slot availability every 5 seconds
     useEffect(() => {
@@ -409,10 +404,11 @@ export default function SlotAvailabilityPreview({
             setPendingHoldBooking(booking);
             setShowHoldModal(true);
             setIsBookingLoading(false);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Booking checkout error:', err);
-            const status = err?.response?.status;
-            const detail = err?.response?.data?.detail;
+            const axiosError = err as { response?: { status?: number; data?: { detail?: unknown } }; message?: string };
+            const status = axiosError?.response?.status;
+            const detail = axiosError?.response?.data?.detail;
 
             if (status === 409) {
                 setBookingError('One or more selected slots were just held or booked by another team. Schedule has been updated.');
@@ -420,7 +416,7 @@ export default function SlotAvailabilityPreview({
             } else if (detail) {
                 setBookingError(typeof detail === 'string' ? detail : JSON.stringify(detail));
             } else {
-                setBookingError(err?.message || 'Unable to complete checkout at this moment. Please try again.');
+                setBookingError(axiosError?.message || 'Unable to complete checkout at this moment. Please try again.');
             }
             setIsBookingLoading(false);
         }
@@ -734,7 +730,6 @@ export default function SlotAvailabilityPreview({
                                 const isNight = slot.period === 'prime_night';
 
                                 const formattedStart = formatSlotTime(slot.start_time);
-                                const formattedEnd = formatSlotTime(slot.end_time);
 
                                 return (
                                     <button
@@ -965,11 +960,6 @@ export default function SlotAvailabilityPreview({
                         booking={pendingHoldBooking}
                         venueName={venueName || 'TurfMate Arena'}
                         courtName={currentCourt?.name || 'Pitch'}
-                        onClose={() => {
-                            setShowHoldModal(false);
-                            setPendingHoldBooking(null);
-                            fetchSlots(activeCourtId, activeDate);
-                        }}
                         onCancelled={() => {
                             setShowHoldModal(false);
                             setPendingHoldBooking(null);

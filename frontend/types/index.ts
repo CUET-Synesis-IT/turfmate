@@ -128,6 +128,18 @@ export interface SSLCommerzInitResponse {
     currency: string;
 }
 
+export interface PaymentRecord {
+    id: string;
+    booking_id: string;
+    amount: number;
+    payment_method: PaymentMethod;
+    status: PaymentStatus;
+    transaction_id?: string | null;
+    notes?: string | null;
+    created_at: string;
+    updated_at?: string;
+}
+
 export interface Testimonial {
     id: string;
     name: string;

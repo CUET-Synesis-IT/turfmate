@@ -1,5 +1,5 @@
 import apiClient from '@/lib/api';
-import { SSLCommerzInitResponse } from '@/types';
+import { SSLCommerzInitResponse, PaymentRecord } from '@/types';
 
 export const paymentService = {
     // Trigger SSLCOMMERZ checkout session
@@ -23,8 +23,8 @@ export const paymentService = {
             transaction_id?: string;
             notes?: string;
         }
-    ): Promise<any> {
-        const res = await apiClient.post(`/api/v1/bookings/${bookingId}/payments`, payload);
+    ): Promise<PaymentRecord> {
+        const res = await apiClient.post<PaymentRecord>(`/api/v1/bookings/${bookingId}/payments`, payload);
         return res.data;
     },
 
@@ -35,8 +35,9 @@ export const paymentService = {
         status?: string;
         start_date?: string;
         end_date?: string;
-    }): Promise<any[]> {
-        const res = await apiClient.get('/api/v1/payments', { params });
+    }): Promise<PaymentRecord[]> {
+        const res = await apiClient.get<PaymentRecord[]>('/api/v1/payments', { params });
         return res.data;
     },
 };
+

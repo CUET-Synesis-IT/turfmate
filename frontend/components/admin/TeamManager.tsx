@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User } from '@/lib/types';
-import { userService, AdminCreatePayload, StaffCreatePayload } from '@/services/userService';
+import { userService } from '@/services/userService';
 import {
     Users,
     UserPlus,
@@ -13,9 +13,6 @@ import {
     Loader2,
     Check,
     X,
-    Key,
-    Phone,
-    Mail,
     AlertCircle,
     CheckCircle2
 } from 'lucide-react';
@@ -63,15 +60,18 @@ export default function TeamManager({ currentUser }: TeamManagerProps) {
         try {
             const data = await userService.listUsers({ limit: 100 });
             setTeamUsers(data);
-        } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to load team directory.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setError(errObj?.response?.data?.detail || 'Failed to load team directory.');
         } finally {
             setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        loadTeam();
+        void Promise.resolve().then(() => {
+            loadTeam();
+        });
     }, [loadTeam]);
 
     // Filtered list
@@ -131,8 +131,9 @@ export default function TeamManager({ currentUser }: TeamManagerProps) {
                 setShowModal(false);
                 setFormSuccess(null);
             }, 1200);
-        } catch (err: any) {
-            setFormError(err?.response?.data?.detail || `Failed to create ${provisionRole}.`);
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setFormError(errObj?.response?.data?.detail || `Failed to create ${provisionRole}.`);
         } finally {
             setIsSubmitting(false);
         }
@@ -143,8 +144,9 @@ export default function TeamManager({ currentUser }: TeamManagerProps) {
         try {
             const updated = await userService.updateUserRole(userId, newRole);
             setTeamUsers(prev => prev.map(u => u.id === userId ? { ...u, role: updated.role } : u));
-        } catch (err: any) {
-            alert(err?.response?.data?.detail || 'Failed to update user role.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            alert(errObj?.response?.data?.detail || 'Failed to update user role.');
         } finally {
             setUpdatingUserId(null);
         }
@@ -219,7 +221,7 @@ export default function TeamManager({ currentUser }: TeamManagerProps) {
                     ].map((tab) => (
                         <button
                             key={tab.id}
-                            onClick={() => setRoleFilter(tab.id as any)}
+                            onClick={() => setRoleFilter(tab.id as 'all' | 'admin' | 'staff' | 'customer')}
                             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                                 roleFilter === tab.id
                                     ? isSuperuser
@@ -370,7 +372,7 @@ export default function TeamManager({ currentUser }: TeamManagerProps) {
                                                 ) : (
                                                     <select
                                                         value={u.role}
-                                                        onChange={(e) => handleRoleChange(u.id, e.target.value as any)}
+                                                        onChange={(e) => handleRoleChange(u.id, e.target.value as 'admin' | 'staff' | 'customer')}
                                                         className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs rounded-xl px-2.5 py-1.5 outline-none cursor-pointer"
                                                     >
                                                         {isSuperuser && <option value="admin">Promote to Admin</option>}

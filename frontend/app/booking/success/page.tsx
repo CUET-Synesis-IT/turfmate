@@ -1,13 +1,12 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { bookingService } from '@/services/bookingService';
 import { BookingResponse } from '@/types';
 import {
     CheckCircle2,
-    Calendar,
     Clock,
     MapPin,
     Copy,
@@ -17,13 +16,11 @@ import {
     Trophy,
     ShieldCheck,
     QrCode,
-    Share2,
     Loader2
 } from 'lucide-react';
 
 function BookingSuccessContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
 
     const bookingRef = searchParams.get('ref') || 'TM-CONFIRMED';
     const tranId = searchParams.get('tran_id') || '';
@@ -31,12 +28,10 @@ function BookingSuccessContent() {
 
     const [copied, setCopied] = useState(false);
     const [bookingDetails, setBookingDetails] = useState<BookingResponse | null>(null);
-    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
     // Fetch full booking details if ref is provided
     useEffect(() => {
         if (bookingRef && bookingRef !== 'TM-CONFIRMED') {
-            setIsLoadingDetails(true);
             bookingService
                 .getBookingByReference(bookingRef)
                 .then((data) => {
@@ -44,9 +39,6 @@ function BookingSuccessContent() {
                 })
                 .catch((err) => {
                     console.log('Could not fetch rich booking details (guest or unauthenticated):', err);
-                })
-                .finally(() => {
-                    setIsLoadingDetails(false);
                 });
         }
     }, [bookingRef]);

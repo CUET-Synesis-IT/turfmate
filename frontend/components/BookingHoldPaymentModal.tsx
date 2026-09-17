@@ -1,30 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookingResponse } from '@/types';
 import { paymentService } from '@/services/paymentService';
 import { bookingService } from '@/services/bookingService';
 import {
     Clock,
     ShieldAlert,
-    ShieldCheck,
     CreditCard,
     AlertTriangle,
     X,
     Loader2,
-    ArrowRight,
-    Sparkles,
-    CheckCircle2,
-    Calendar,
-    MapPin,
-    Trophy
+    ArrowRight
 } from 'lucide-react';
 
 interface BookingHoldPaymentModalProps {
     booking: BookingResponse;
     venueName?: string;
     courtName?: string;
-    onClose: () => void;
     onCancelled: () => void;
 }
 
@@ -34,26 +27,22 @@ export default function BookingHoldPaymentModal({
     booking,
     venueName,
     courtName,
-    onClose,
     onCancelled,
 }: BookingHoldPaymentModalProps) {
     // Calculate initial seconds remaining based on expires_at or created_at
-    const initialSeconds = useMemo(() => {
+    const [secondsRemaining, setSecondsRemaining] = useState<number>(() => {
         if (booking.expires_at) {
             const expireTime = new Date(booking.expires_at).getTime();
-            const now = Date.now();
-            return Math.max(0, Math.floor((expireTime - now) / 1000));
+            return Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
         }
         if (booking.created_at) {
             const createdTime = new Date(booking.created_at).getTime();
             const expireTime = createdTime + TOTAL_HOLD_SECONDS * 1000;
-            const now = Date.now();
-            return Math.max(0, Math.floor((expireTime - now) / 1000));
+            return Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
         }
         return TOTAL_HOLD_SECONDS;
-    }, [booking.expires_at, booking.created_at]);
+    });
 
-    const [secondsRemaining, setSecondsRemaining] = useState<number>(initialSeconds);
     const [isCancelling, setIsCancelling] = useState<boolean>(false);
     const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -96,8 +85,9 @@ export default function BookingHoldPaymentModal({
         try {
             await bookingService.cancelBooking(booking.id, 'Player voluntarily released hold during checkout');
             onCancelled();
-        } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to release slot reservation.');
+        } catch (err: unknown) {
+            const errorObj = err as { response?: { data?: { detail?: string } }; message?: string };
+            setError(errorObj.response?.data?.detail || errorObj.message || 'Failed to release slot reservation.');
             setIsCancelling(false);
         }
     };
@@ -114,9 +104,10 @@ export default function BookingHoldPaymentModal({
             } else {
                 throw new Error('SSLCOMMERZ did not return a checkout gateway link.');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('SSLCommerz launch error:', err);
-            setError(err?.response?.data?.detail || err?.message || 'Failed to connect to payment gateway.');
+            const errorObj = err as { response?: { data?: { detail?: string } }; message?: string };
+            setError(errorObj?.response?.data?.detail || errorObj?.message || 'Failed to connect to payment gateway.');
             setIsRedirecting(false);
         }
     };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import Image from 'next/image';
 import { Venue, Court } from '@/types';
 import {
@@ -12,7 +12,6 @@ import {
     Check,
     ArrowRight,
     Users,
-    Compass,
     Trophy,
     Sun,
     Moon,
@@ -46,38 +45,28 @@ export default function VenuePitchExplorer({
     selectedCourtId,
     onSelectCourt,
 }: VenuePitchExplorerProps) {
-    // Current pitch slide index (0 to courts.length - 1)
-    const [currentPitchIndex, setCurrentPitchIndex] = useState(0);
-
     const activeVenue = useMemo(() => {
         return venues.find((v) => v.id === selectedVenueId) || venues[0];
     }, [venues, selectedVenueId]);
 
-    // When courts change or venue changes, reset pitch slider to 0 and select first pitch
-    useEffect(() => {
-        setCurrentPitchIndex(0);
-        if (courts.length > 0) {
-            onSelectCourt(courts[0].id);
-        }
-    }, [selectedVenueId, courts.length]);
+    // Derive current pitch index from selectedCourtId prop
+    const currentPitchIndex = useMemo(() => {
+        const idx = courts.findIndex((c) => c.id === selectedCourtId);
+        return idx >= 0 ? idx : 0;
+    }, [courts, selectedCourtId]);
 
     const activePitch = courts[currentPitchIndex] || courts[0];
 
-    // Sync selectedCourtId with currentPitchIndex
-    useEffect(() => {
-        if (activePitch && activePitch.id !== selectedCourtId) {
-            onSelectCourt(activePitch.id);
-        }
-    }, [currentPitchIndex, activePitch]);
-
     const prevPitch = () => {
         if (courts.length <= 1) return;
-        setCurrentPitchIndex((prev) => (prev - 1 + courts.length) % courts.length);
+        const targetIdx = (currentPitchIndex - 1 + courts.length) % courts.length;
+        onSelectCourt(courts[targetIdx].id);
     };
 
     const nextPitch = () => {
         if (courts.length <= 1) return;
-        setCurrentPitchIndex((prev) => (prev + 1) % courts.length);
+        const targetIdx = (currentPitchIndex + 1) % courts.length;
+        onSelectCourt(courts[targetIdx].id);
     };
 
     const handleSelectAndScroll = () => {
@@ -318,7 +307,7 @@ export default function VenuePitchExplorer({
                                 {courts.map((c, idx) => (
                                     <button
                                         key={c.id}
-                                        onClick={() => setCurrentPitchIndex(idx)}
+                                        onClick={() => onSelectCourt(c.id)}
                                         aria-label={`Go to ${c.name}`}
                                         className={`transition-all cursor-pointer ${currentPitchIndex === idx
                                             ? 'w-8 h-2.5 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/50'

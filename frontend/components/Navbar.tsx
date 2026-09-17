@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, ChevronDown, User as UserIcon, LogOut, ShieldCheck, Phone, Calendar, Users } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, ShieldCheck, Phone, Calendar, Users } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { User } from '@/lib/types';
 

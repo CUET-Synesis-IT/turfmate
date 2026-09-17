@@ -2,24 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import {
     Calendar,
-    Clock,
-    Shield,
-    Users,
     Sparkles,
     ArrowRight,
     Star,
-    CheckCircle2,
-    Phone,
     Trophy,
     Flame,
-    MapPin,
-    CreditCard,
-    ShieldCheck,
-    Banknote,
-    Loader2
+    CreditCard
 } from 'lucide-react';
 import { Venue, Court } from '@/types';
 import { venueService } from '@/services/venueService';
@@ -34,51 +24,41 @@ export default function Home() {
     const [selectedVenueId, setSelectedVenueId] = useState<string>('');
     const [courts, setCourts] = useState<Court[]>([]);
     const [selectedCourtId, setSelectedCourtId] = useState<string>('');
-    const [isLoadingVenues, setIsLoadingVenues] = useState<boolean>(true);
-    const [isLoadingCourts, setIsLoadingCourts] = useState<boolean>(false);
 
     // Initial load: fetch all active venues from backend
     useEffect(() => {
-        async function loadVenues() {
-            try {
-                setIsLoadingVenues(true);
-                const data = await venueService.getVenues();
+        venueService
+            .getVenues()
+            .then((data) => {
                 setVenues(data || []);
                 if (data && data.length > 0) {
                     setSelectedVenueId(data[0].id);
                 }
-            } catch (err) {
+            })
+            .catch((err) => {
                 console.error('Failed to load venues from API:', err);
-            } finally {
-                setIsLoadingVenues(false);
-            }
-        }
-        loadVenues();
+            });
     }, []);
 
     // When active venue changes, fetch its courts
     useEffect(() => {
         if (!selectedVenueId) return;
 
-        async function loadCourts() {
-            try {
-                setIsLoadingCourts(true);
-                const venueCourts = await venueService.getVenueCourts(selectedVenueId);
+        venueService
+            .getVenueCourts(selectedVenueId)
+            .then((venueCourts) => {
                 setCourts(venueCourts || []);
                 if (venueCourts && venueCourts.length > 0) {
                     setSelectedCourtId(venueCourts[0].id);
                 } else {
                     setSelectedCourtId('');
                 }
-            } catch (err) {
+            })
+            .catch((err) => {
                 console.error('Failed to load courts for selected venue:', err);
                 setCourts([]);
                 setSelectedCourtId('');
-            } finally {
-                setIsLoadingCourts(false);
-            }
-        }
-        loadCourts();
+            });
     }, [selectedVenueId]);
 
     const activeVenue = venues.find((v) => v.id === selectedVenueId) || venues[0];

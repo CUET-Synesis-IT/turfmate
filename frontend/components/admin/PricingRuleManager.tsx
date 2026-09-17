@@ -1,20 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Venue, Court } from '@/types';
 import { pricingService, PricingRule, PricingRuleCreatePayload } from '@/services/pricingService';
 import {
     Tag,
     Plus,
     Trash2,
-    Clock,
-    Calendar,
-    AlertCircle,
     Loader2,
     Check,
     X,
     Sparkles,
-    DollarSign,
     Zap
 } from 'lucide-react';
 
@@ -37,18 +33,12 @@ export default function PricingRuleManager({ venues, courts }: PricingRuleManage
     const [selectedVenueId, setSelectedVenueId] = useState<string>(venues[0]?.id || '');
     const [selectedCourtId, setSelectedCourtId] = useState<string>('');
 
-    const venueCourts = courts.filter(c => c.venue_id === selectedVenueId);
+    const venueCourts = useMemo(() => courts.filter(c => c.venue_id === selectedVenueId), [courts, selectedVenueId]);
+    const effectiveCourtId = useMemo(() => {
+        return (selectedCourtId && venueCourts.some(c => c.id === selectedCourtId)) ? selectedCourtId : (venueCourts[0]?.id || '');
+    }, [selectedCourtId, venueCourts]);
 
-    // Auto-select first court when venue changes
-    useEffect(() => {
-        if (venueCourts.length > 0 && (!selectedCourtId || !venueCourts.some(c => c.id === selectedCourtId))) {
-            setSelectedCourtId(venueCourts[0].id);
-        } else if (venueCourts.length === 0) {
-            setSelectedCourtId('');
-        }
-    }, [selectedVenueId, venueCourts, selectedCourtId]);
-
-    const activeCourt = courts.find(c => c.id === selectedCourtId);
+    const activeCourt = courts.find(c => c.id === effectiveCourtId);
 
     // Pricing rules state
     const [rules, setRules] = useState<PricingRule[]>([]);
@@ -70,24 +60,27 @@ export default function PricingRuleManager({ venues, courts }: PricingRuleManage
     const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
 
     const loadRules = useCallback(async () => {
-        if (!selectedCourtId) {
+        if (!effectiveCourtId) {
             setRules([]);
             return;
         }
         setIsLoadingRules(true);
         setRulesError(null);
         try {
-            const data = await pricingService.getCourtPricingRules(selectedCourtId);
+            const data = await pricingService.getCourtPricingRules(effectiveCourtId);
             setRules(data);
-        } catch (err: any) {
-            setRulesError(err?.response?.data?.detail || 'Failed to load pricing rules.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setRulesError(errObj?.response?.data?.detail || 'Failed to load pricing rules.');
         } finally {
             setIsLoadingRules(false);
         }
-    }, [selectedCourtId]);
+    }, [effectiveCourtId]);
 
     useEffect(() => {
-        loadRules();
+        void Promise.resolve().then(() => {
+            loadRules();
+        });
     }, [loadRules]);
 
     const handleOpenModal = () => {
@@ -105,18 +98,22 @@ export default function PricingRuleManager({ venues, courts }: PricingRuleManage
 
     const handleCreateRule = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedCourtId) return;
+        if (!effectiveCourtId) return;
         setFormError(null);
         setIsSubmitting(true);
         try {
-            await pricingService.createCourtPricingRule(selectedCourtId, {
+            const dayOfWeek = (ruleForm.day_of_week === null || ruleForm.day_of_week === undefined || String(ruleForm.day_of_week) === '')
+                ? null
+                : Number(ruleForm.day_of_week);
+            await pricingService.createCourtPricingRule(effectiveCourtId, {
                 ...ruleForm,
-                day_of_week: ruleForm.day_of_week === '' as any || ruleForm.day_of_week === undefined ? null : ruleForm.day_of_week,
+                day_of_week: dayOfWeek,
             });
             await loadRules();
             setShowModal(false);
-        } catch (err: any) {
-            setFormError(err?.response?.data?.detail || 'Failed to create pricing rule.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setFormError(errObj?.response?.data?.detail || 'Failed to create pricing rule.');
         } finally {
             setIsSubmitting(false);
         }
@@ -128,8 +125,9 @@ export default function PricingRuleManager({ venues, courts }: PricingRuleManage
         try {
             await pricingService.deletePricingRule(ruleId);
             setRules(prev => prev.filter(r => r.id !== ruleId));
-        } catch (err: any) {
-            alert(err?.response?.data?.detail || 'Failed to delete pricing rule.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            alert(errObj?.response?.data?.detail || 'Failed to delete pricing rule.');
         } finally {
             setDeletingRuleId(null);
         }
@@ -167,7 +165,10 @@ export default function PricingRuleManager({ venues, courts }: PricingRuleManage
                         <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Venue</label>
                         <select
                             value={selectedVenueId}
-                            onChange={(e) => setSelectedVenueId(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedVenueId(e.target.value);
+                                setSelectedCourtId('');
+                            }}
                             className="bg-zinc-800 border border-zinc-700 text-white text-xs rounded-xl px-3 py-2 outline-none"
                         >
                             {venues.map((v) => (
@@ -180,7 +181,7 @@ export default function PricingRuleManager({ venues, courts }: PricingRuleManage
                     <div>
                         <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Target Pitch</label>
                         <select
-                            value={selectedCourtId}
+                            value={effectiveCourtId}
                             onChange={(e) => setSelectedCourtId(e.target.value)}
                             disabled={venueCourts.length === 0}
                             className="bg-zinc-800 border border-zinc-700 text-white text-xs rounded-xl px-3 py-2 outline-none"

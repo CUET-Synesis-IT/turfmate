@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/auth-store';
@@ -24,7 +24,6 @@ import {
     XCircle,
     CreditCard,
     Sparkles,
-    User as UserIcon,
     AlertTriangle
 } from 'lucide-react';
 
@@ -32,6 +31,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const { user, isAuthenticated, isHydrated } = useAuthStore();
 
+    const [nowTimestamp] = useState<number>(() => Date.now());
     const [bookings, setBookings] = useState<BookingResponse[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export default function DashboardPage() {
     }, [isHydrated, isAuthenticated, user, router]);
 
     // Load customer bookings
-    const fetchBookings = () => {
+    const fetchBookings = useCallback(() => {
         if (!isAuthenticated()) return;
         setIsLoading(true);
         setError(null);
@@ -80,20 +80,22 @@ export default function DashboardPage() {
                 );
                 setBookings(sorted);
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
                 console.error('Failed to load my bookings:', err);
                 setError('Could not load your bookings. Please check your connection and retry.');
             })
             .finally(() => {
                 setIsLoading(false);
             });
-    };
+    }, [isAuthenticated]);
 
     useEffect(() => {
         if (isAuthenticated()) {
-            fetchBookings();
+            void Promise.resolve().then(() => {
+                fetchBookings();
+            });
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, fetchBookings]);
 
     // Copy Reference Code helper
     const handleCopyRef = (ref: string) => {
@@ -113,7 +115,7 @@ export default function DashboardPage() {
         const finalReason = cancelReason === 'Other' ? customCancelReason.trim() || 'Player requested cancellation' : cancelReason;
 
         try {
-            const updated = await bookingService.cancelBooking(cancellingBooking.id, finalReason);
+            await bookingService.cancelBooking(cancellingBooking.id, finalReason);
             // Update in local state
             setBookings((prev) =>
                 prev.map((b) => (b.id === cancellingBooking.id ? { ...b, status: 'cancelled' as const, cancellation_reason: finalReason } : b))
@@ -121,9 +123,10 @@ export default function DashboardPage() {
             setCancellingBooking(null);
             setCancelReason('Squad unavailable');
             setCustomCancelReason('');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to cancel booking:', err);
-            setCancelError(err?.response?.data?.detail || 'Unable to cancel booking at this time.');
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setCancelError(errObj?.response?.data?.detail || 'Unable to cancel booking at this time.');
         } finally {
             setIsCancelling(false);
         }
@@ -137,8 +140,9 @@ export default function DashboardPage() {
             if (sslRes.gateway_url) {
                 window.location.href = sslRes.gateway_url;
             }
-        } catch (err: any) {
-            alert(err?.response?.data?.detail || 'Failed to initiate payment gateway.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } }; message?: string };
+            alert(errObj?.response?.data?.detail || errObj?.message || 'Failed to initiate payment gateway.');
             setPayingBookingId(null);
         }
     };
@@ -416,8 +420,7 @@ export default function DashboardPage() {
                             const isConfirmed = b.status === 'confirmed';
                             const isPending = b.status === 'pending';
                             const isCancelled = b.status === 'cancelled';
-                            const isCompleted = b.status === 'completed';
-                            const isFuture = new Date(b.start_datetime).getTime() > Date.now();
+                            const isFuture = new Date(b.start_datetime).getTime() > nowTimestamp;
 
                             return (
                                 <div

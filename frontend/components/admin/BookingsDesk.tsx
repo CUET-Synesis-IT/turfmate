@@ -1,23 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { bookingService } from '@/services/bookingService';
 import { paymentService } from '@/services/paymentService';
 import { BookingResponse, Venue, Court } from '@/types';
 import {
     Calendar,
-    Clock,
-    User as UserIcon,
     Phone,
     Banknote,
-    CheckCircle2,
-    AlertTriangle,
-    XCircle,
     Plus,
     Lock,
     Search,
     RefreshCw,
-    Filter,
     Loader2,
     X
 } from 'lucide-react';
@@ -71,20 +65,15 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
     const [isSubmittingPayment, setIsSubmittingPayment] = useState<boolean>(false);
     const [payError, setPayError] = useState<string | null>(null);
 
-    // Set default court for forms
-    useEffect(() => {
-        if (courts.length > 0) {
-            if (!walkinCourtId) setWalkinCourtId(courts[0].id);
-            if (!blockCourtId) setBlockCourtId(courts[0].id);
-        }
-    }, [courts, walkinCourtId, blockCourtId]);
+    const effectiveWalkinCourtId = walkinCourtId || (courts[0]?.id ?? '');
+    const effectiveBlockCourtId = blockCourtId || (courts[0]?.id ?? '');
 
     // Load Bookings
-    const loadBookings = async () => {
+    const loadBookings = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
-        const params: Record<string, any> = {};
+        const params: Record<string, string> = {};
         if (selectedVenueId !== 'all') params.venue_id = selectedVenueId;
         if (selectedCourtId !== 'all') params.court_id = selectedCourtId;
         if (statusFilter !== 'all') params.status = statusFilter;
@@ -93,17 +82,20 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
         try {
             const data = await bookingService.listAllBookings(params);
             setBookings(data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to load bookings:', err);
-            setError(err?.response?.data?.detail || 'Failed to load bookings ledger.');
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setError(errObj?.response?.data?.detail || 'Failed to load bookings ledger.');
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [selectedVenueId, selectedCourtId, statusFilter, selectedDate]);
 
     useEffect(() => {
-        loadBookings();
-    }, [selectedVenueId, selectedCourtId, statusFilter, selectedDate]);
+        void Promise.resolve().then(() => {
+            loadBookings();
+        });
+    }, [loadBookings]);
 
     // Filtered bookings
     const filteredBookings = useMemo(() => {
@@ -152,7 +144,7 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
         setIsSubmittingWalkin(true);
         try {
             await bookingService.createStaffBooking({
-                court_id: walkinCourtId,
+                court_id: effectiveWalkinCourtId,
                 start_datetime: startDate.toISOString(),
                 end_datetime: endDate.toISOString(),
                 customer_name: walkinName,
@@ -166,9 +158,10 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
             setWalkinPhone('');
             setWalkinNotes('');
             loadBookings();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Walk-in booking error:', err);
-            setWalkinError(err?.response?.data?.detail || 'Failed to create walk-in booking.');
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setWalkinError(errObj?.response?.data?.detail || 'Failed to create walk-in booking.');
         } finally {
             setIsSubmittingWalkin(false);
         }
@@ -196,7 +189,7 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
         setIsSubmittingBlock(true);
         try {
             await bookingService.createCourtBlock({
-                court_id: blockCourtId,
+                court_id: effectiveBlockCourtId,
                 start_datetime: startDt.toISOString(),
                 end_datetime: endDt.toISOString(),
                 reason: blockReason,
@@ -204,9 +197,10 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
 
             setShowBlockModal(false);
             loadBookings();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Block window error:', err);
-            setBlockError(err?.response?.data?.detail || 'Failed to block court window.');
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setBlockError(errObj?.response?.data?.detail || 'Failed to block court window.');
         } finally {
             setIsSubmittingBlock(false);
         }
@@ -217,8 +211,9 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
         try {
             await bookingService.updateBookingStatus(bookingId, newStatus);
             loadBookings();
-        } catch (err: any) {
-            alert(err?.response?.data?.detail || 'Failed to update booking status.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            alert(errObj?.response?.data?.detail || 'Failed to update booking status.');
         }
     };
 
@@ -241,9 +236,10 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
             setPaymentModalBooking(null);
             setPayTxnId('');
             loadBookings();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Payment collection error:', err);
-            setPayError(err?.response?.data?.detail || 'Failed to record desk payment.');
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setPayError(errObj?.response?.data?.detail || 'Failed to record desk payment.');
         } finally {
             setIsSubmittingPayment(false);
         }
@@ -594,7 +590,7 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                             <div>
                                 <label className="block font-bold text-zinc-300 mb-1">Select Pitch</label>
                                 <select
-                                    value={walkinCourtId}
+                                    value={effectiveWalkinCourtId}
                                     onChange={(e) => setWalkinCourtId(e.target.value)}
                                     className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2.5 outline-none"
                                 >
@@ -724,7 +720,7 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                             <div>
                                 <label className="block font-bold text-zinc-300 mb-1">Select Pitch</label>
                                 <select
-                                    value={blockCourtId}
+                                    value={effectiveBlockCourtId}
                                     onChange={(e) => setBlockCourtId(e.target.value)}
                                     className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2.5 outline-none"
                                 >
@@ -844,7 +840,7 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                                 <label className="block font-bold text-zinc-300 mb-1">Payment Method</label>
                                 <select
                                     value={payMethod}
-                                    onChange={(e) => setPayMethod(e.target.value as any)}
+                                    onChange={(e) => setPayMethod(e.target.value as 'cash' | 'bkash' | 'nagad' | 'card')}
                                     className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2.5 outline-none uppercase font-bold"
                                 >
                                     <option value="cash">Counter Cash</option>

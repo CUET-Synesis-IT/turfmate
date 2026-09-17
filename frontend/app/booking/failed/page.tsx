@@ -6,9 +6,7 @@ import Link from 'next/link';
 import {
     XCircle,
     RotateCcw,
-    AlertCircle,
     Home,
-    PhoneCall,
     ShieldAlert,
     Loader2
 } from 'lucide-react';

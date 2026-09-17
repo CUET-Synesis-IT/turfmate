@@ -10,12 +10,9 @@ import {
     Plus,
     Edit2,
     CheckCircle2,
-    AlertCircle,
     X,
     Loader2,
     Trophy,
-    Shield,
-    Sparkles,
     Check
 } from 'lucide-react';
 
@@ -105,8 +102,9 @@ export default function VenuePitchManager({ venues, courts, onRefresh }: VenuePi
             }
             await onRefresh();
             setShowVenueModal(false);
-        } catch (err: any) {
-            setVenueError(err?.response?.data?.detail || 'Failed to save venue.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setVenueError(errObj?.response?.data?.detail || 'Failed to save venue.');
         } finally {
             setIsSubmittingVenue(false);
         }
@@ -159,8 +157,9 @@ export default function VenuePitchManager({ venues, courts, onRefresh }: VenuePi
             }
             await onRefresh();
             setShowCourtModal(false);
-        } catch (err: any) {
-            setCourtError(err?.response?.data?.detail || 'Failed to save court.');
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setCourtError(errObj?.response?.data?.detail || 'Failed to save court.');
         } finally {
             setIsSubmittingCourt(false);
         }
