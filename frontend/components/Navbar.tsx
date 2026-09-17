@@ -158,12 +158,10 @@ export default function Navbar() {
     const router = useRouter();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [hasScroll, setHasScroll] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
-    const { token, user, logout, hydrate } = useAuthStore();
+    const { token, user, logout, hydrate, isHydrated } = useAuthStore();
 
     useEffect(() => {
-        setMounted(true);
         hydrate();
     }, [hydrate]);
 
@@ -189,7 +187,7 @@ export default function Navbar() {
         { href: '/contact', label: 'Contact Us' },
     ];
 
-    const isLoggedIn = mounted && !!token;
+    const isLoggedIn = isHydrated && !!token;
 
     return (
         <nav

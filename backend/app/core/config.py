@@ -12,13 +12,21 @@ def parse_cors(v: Any) -> list[str] | str:
     return v
 
 
+def parse_database_url(v: Any) -> str:
+    if isinstance(v, str) and v.startswith("postgres://"):
+        return v.replace("postgres://", "postgresql://", 1)
+    return str(v)
+
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "TurfMate API"
     API_V1_STR: str = "/api/v1"
 
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_API_URL: str = "http://localhost:8000"
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/turfmate"
+    DATABASE_URL: Annotated[str, BeforeValidator(parse_database_url)] = (
+        "postgresql://postgres:postgres@localhost:5432/turfmate"
+    )
 
     BACKEND_CORS_ORIGINS: Annotated[list[str], BeforeValidator(parse_cors)] = [
         "http://localhost:3000",

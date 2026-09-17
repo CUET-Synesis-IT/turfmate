@@ -1,0 +1,33 @@
+﻿databases:
+  - name: turfmate-db
+    databaseName: turfmate
+    user: turfmate
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: turfmate-api
+    runtime: python
+    rootDir: backend
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: turfmate-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PROJECT_NAME
+        value: TurfMate API
+      - key: API_V1_STR
+        value: /api/v1
+      - key: BACKEND_CORS_ORIGINS
+        value: '["http://localhost:3000"]'
+      - key: PYTHON_VERSION
+        value: 3.11.9
