@@ -3,24 +3,22 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, ChevronDown, LogOut, ShieldCheck, Phone, Calendar, Users } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, ShieldCheck, Phone, Calendar, Users, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { User } from '@/lib/types';
 
 interface NavLinkProps {
     href: string;
     label: string;
-    isActive: boolean;
+    onClick: (e: React.MouseEvent) => void;
 }
 
-function NavLink({ href, label, isActive }: NavLinkProps) {
+function NavLink({ href, label, onClick }: NavLinkProps) {
     return (
         <Link
             href={href}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 hover:text-primary-600 dark:hover:text-primary-400'
-                }`}
+            onClick={onClick}
+            className="px-3.5 py-2 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/80 transition-all duration-150 cursor-pointer"
         >
             {label}
         </Link>
@@ -59,77 +57,78 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-zinc-700 hover:border-primary-500 dark:hover:border-primary-500 bg-gray-50 dark:bg-zinc-800/90 transition-all duration-150 cursor-pointer shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-zinc-700/80 hover:border-emerald-500/60 bg-zinc-900/90 transition-all duration-150 cursor-pointer shadow-sm hover:shadow"
                 aria-expanded={isOpen}
             >
-                <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white font-black text-xs shadow-sm">
                     {initial}
                 </div>
-                <div className="flex flex-col text-left pr-1 max-w-[140px]">
-                    <span className="text-xs font-bold text-gray-900 dark:text-white truncate leading-tight">
+                <div className="flex flex-col text-left pr-1 max-w-[130px]">
+                    <span className="text-xs font-bold text-white truncate leading-tight">
                         {displayName}
                     </span>
-                    {user?.full_name && user?.phone_number && (
-                        <span className="text-[10px] text-gray-500 dark:text-zinc-400 truncate leading-tight">
+                    {user?.phone_number && (
+                        <span className="text-[10px] text-zinc-400 truncate leading-tight">
                             {user.phone_number}
                         </span>
                     )}
                 </div>
                 <ChevronDown
                     size={14}
-                    className={`text-gray-500 dark:text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
-                        }`}
+                    className={`text-zinc-400 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180' : ''
+                    }`}
                 />
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-zinc-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-2 w-64 bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                     {/* User Header */}
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
+                    <div className="px-4 py-3 border-b border-zinc-800">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                            <p className="text-sm font-bold text-white truncate">
                                 {user?.full_name || 'Player'}
                             </p>
                             {user?.is_superuser ? (
-                                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span className="text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <ShieldCheck size={11} /> Superuser
                                 </span>
                             ) : user?.role === 'admin' ? (
-                                <span className="text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span className="text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800/60 px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <ShieldCheck size={11} /> Admin
                                 </span>
                             ) : user?.role === 'staff' ? (
-                                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded-full">
                                     Staff
                                 </span>
                             ) : (
-                                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded-full">
                                     Customer
                                 </span>
                             )}
                         </div>
 
                         {user?.phone_number && (
-                            <p className="text-xs text-gray-500 dark:text-zinc-400 flex items-center gap-1.5">
+                            <p className="text-xs text-zinc-400 flex items-center gap-1.5">
                                 <Phone size={11} />
                                 <span>{user.phone_number}</span>
                             </p>
                         )}
                         {user?.email && (
-                            <p className="text-xs text-gray-400 dark:text-zinc-500 truncate mt-0.5">
+                            <p className="text-xs text-zinc-500 truncate mt-0.5">
                                 {user.email}
                             </p>
                         )}
                     </div>
 
-                    {/* Menu Items */}
+                    {/* Menu Items based on role */}
                     <div className="py-1">
                         {user?.is_superuser ? (
                             <>
                                 <Link
                                     href="/admin"
                                     onClick={() => setIsOpen(false)}
-                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-500 hover:bg-amber-500/10 transition-colors"
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-400 hover:bg-amber-500/10 transition-colors"
                                 >
                                     <ShieldCheck size={15} />
                                     <span>System Admin Console</span>
@@ -137,7 +136,7 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
                                 <Link
                                     href="/admin?tab=team"
                                     onClick={() => setIsOpen(false)}
-                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-amber-500/10 hover:text-amber-500 transition-colors"
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
                                 >
                                     <Users size={15} />
                                     <span>Team & Staff Control</span>
@@ -148,49 +147,49 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
                                 <Link
                                     href="/admin"
                                     onClick={() => setIsOpen(false)}
-                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-blue-500 hover:bg-blue-500/10 transition-colors"
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-blue-400 hover:bg-blue-500/10 transition-colors"
                                 >
                                     <ShieldCheck size={15} />
-                                    <span>Operations & Staff Desk</span>
+                                    <span>Operations Desk</span>
                                 </Link>
                                 <Link
                                     href="/admin?tab=team"
                                     onClick={() => setIsOpen(false)}
-                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-blue-500/10 hover:text-blue-300 transition-colors"
                                 >
                                     <Users size={15} />
-                                    <span>Staff Team Management</span>
+                                    <span>Staff Management</span>
                                 </Link>
                             </>
                         ) : user?.role === 'staff' ? (
                             <Link
                                 href="/admin"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors"
                             >
                                 <ShieldCheck size={15} />
-                                <span>Operations & Staff Desk</span>
+                                <span>Operations Desk</span>
                             </Link>
                         ) : (
                             <Link
                                 href="/dashboard"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"
                             >
                                 <Calendar size={15} />
-                                <span>My Bookings & Dashboard</span>
+                                <span>My Bookings & Matches</span>
                             </Link>
                         )}
                     </div>
 
                     {/* Logout */}
-                    <div className="border-t border-gray-100 dark:border-zinc-800 pt-1">
+                    <div className="border-t border-zinc-800 pt-1">
                         <button
                             onClick={() => {
                                 setIsOpen(false);
                                 onLogout();
                             }}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors text-left cursor-pointer"
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-950/40 transition-colors text-left cursor-pointer"
                         >
                             <LogOut size={15} />
                             <span>Log Out</span>
@@ -230,27 +229,59 @@ export default function Navbar() {
     };
 
     const navLinks = [
-        { href: '/', label: 'Home' },
-        { href: '/venues', label: 'Venues' },
-        { href: '/about', label: 'About Us' },
-        { href: '/contact', label: 'Contact Us' },
+        { href: '/#venues-section', label: 'Arenas & Pitches' },
+        { href: '/#availability-section', label: 'Live Slots' },
+        { href: '/#amenities-section', label: 'Amenities' },
+        { href: '/#faqs-section', label: 'FAQs' },
     ];
 
     const isLoggedIn = isHydrated && !!token;
 
+    const handleAnchorClick = (href: string, e?: React.MouseEvent) => {
+        setMobileMenuOpen(false);
+        if (pathname === '/' && href.includes('#')) {
+            const id = href.split('#')[1];
+            const element = document.getElementById(id);
+            if (element) {
+                e?.preventDefault();
+                element.scrollIntoView({ behavior: 'smooth' });
+                window.history.replaceState(null, '', `/#${id}`);
+            }
+        }
+    };
+
     return (
         <nav
-            className={`sticky top-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md transition-shadow border-b border-gray-100 dark:border-zinc-800 ${hasScroll ? 'shadow-md' : ''
-                }`}
+            className={`sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/80 transition-all ${
+                hasScroll ? 'shadow-xl shadow-black/40' : ''
+            }`}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-[var(--navbar-height)] min-h-16">
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2.5 flex-shrink-0" onClick={() => setMobileMenuOpen(false)}>
-                        <div className="w-9 h-9 bg-gradient-to-br from-primary-600 to-emerald-700 rounded-xl flex items-center justify-center shadow-md shadow-primary-600/30">
-                            <span className="text-white font-black text-xl">T</span>
+                    {/* Brand Logo */}
+                    <Link
+                        href="/"
+                        className="flex items-center gap-2.5 flex-shrink-0 group cursor-pointer"
+                        onClick={(e) => {
+                            setMobileMenuOpen(false);
+                            if (pathname === '/') {
+                                e.preventDefault();
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                window.history.replaceState(null, '', '/');
+                            }
+                        }}
+                    >
+                        <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-400/30 group-hover:scale-105 transition-transform">
+                            <span className="text-white font-black text-xl tracking-tighter">T</span>
                         </div>
-                        <span className="text-xl font-extrabold text-gray-950 dark:text-white tracking-tight">TurfMate</span>
+                        <div className="flex flex-col">
+                            <span className="text-xl font-black text-white tracking-tight leading-none">
+                                Turf<span className="text-emerald-400">Mate</span>
+                            </span>
+                            <span className="text-[10px] font-semibold text-zinc-400 tracking-wider uppercase leading-tight">
+                                Arena & Pitches
+                            </span>
+                        </div>
                     </Link>
 
                     {/* Desktop Navigation Links */}
@@ -260,28 +291,59 @@ export default function Navbar() {
                                 key={link.href}
                                 href={link.href}
                                 label={link.label}
-                                isActive={pathname === link.href}
+                                onClick={(e) => handleAnchorClick(link.href, e)}
                             />
                         ))}
                     </div>
 
-                    {/* Desktop Auth Section */}
-                    <div className="hidden md:block">
+                    {/* Desktop Auth & Quick CTAs */}
+                    <div className="hidden md:flex items-center gap-3">
                         {isLoggedIn ? (
-                            <UserMenu user={user} onLogout={handleLogout} />
+                            <div className="flex items-center gap-3">
+                                {/* Role Quick Action Pill */}
+                                {user?.is_superuser || user?.role === 'admin' || user?.role === 'staff' ? (
+                                    <Link
+                                        href="/admin"
+                                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                            pathname === '/admin'
+                                                ? 'bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20'
+                                                : 'bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                                        }`}
+                                    >
+                                        <ShieldCheck size={13} />
+                                        <span>Operations Hub</span>
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href="/dashboard"
+                                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                            pathname === '/dashboard'
+                                                ? 'bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20'
+                                                : 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
+                                        }`}
+                                    >
+                                        <Calendar size={13} />
+                                        <span>My Bookings</span>
+                                    </Link>
+                                )}
+
+                                <UserMenu user={user} onLogout={handleLogout} />
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2.5">
                                 <Link
                                     href="/login"
-                                    className="px-4 py-2 text-sm font-bold text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
+                                    className="px-3.5 py-2 text-xs sm:text-sm font-bold text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-colors cursor-pointer"
                                 >
-                                    Login
+                                    Log In
                                 </Link>
                                 <Link
-                                    href="/register"
-                                    className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-md shadow-primary-600/20 hover:shadow-lg transition-all"
+                                    href="/#venues-section"
+                                    onClick={(e) => handleAnchorClick('/#venues-section', e)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl shadow-lg shadow-emerald-950/40 hover:scale-105 transition-all cursor-pointer"
                                 >
-                                    Register
+                                    <Sparkles size={14} />
+                                    <span>Book Pitch</span>
                                 </Link>
                             </div>
                         )}
@@ -295,10 +357,11 @@ export default function Navbar() {
 
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="inline-flex items-center justify-center p-2 rounded-xl text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                            className="inline-flex items-center justify-center p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
                             aria-expanded={mobileMenuOpen}
+                            aria-label="Toggle navigation menu"
                         >
-                            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                         </button>
                     </div>
                 </div>
@@ -306,53 +369,79 @@ export default function Navbar() {
 
             {/* Mobile Navigation Drawer */}
             {mobileMenuOpen && (
-                <div className="md:hidden bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 animate-in fade-in duration-200">
+                <div className="md:hidden bg-zinc-900 border-t border-zinc-800/90 animate-in fade-in duration-200">
                     <div className="px-3 pt-3 pb-3 space-y-1">
                         {navLinks.map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                onClick={() => setMobileMenuOpen(false)}
-                                className={`block px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${pathname === link.href
-                                    ? 'bg-primary-600 text-white'
-                                    : 'text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
-                                    }`}
+                                onClick={(e) => handleAnchorClick(link.href, e)}
+                                className="block px-3.5 py-2.5 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors"
                             >
                                 {link.label}
                             </Link>
                         ))}
+
+                        {/* Mobile Quick Action Link */}
+                        {isLoggedIn && (
+                            <div className="pt-2 border-t border-zinc-800 mt-2 space-y-1">
+                                {user?.is_superuser || user?.role === 'admin' || user?.role === 'staff' ? (
+                                    <Link
+                                        href="/admin"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-bold text-amber-400 hover:bg-amber-500/10 transition-colors"
+                                    >
+                                        <ShieldCheck size={16} />
+                                        <span>Facility Operations Hub</span>
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href="/dashboard"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                                    >
+                                        <Calendar size={16} />
+                                        <span>My Bookings & Match Passes</span>
+                                    </Link>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Mobile Auth Drawer */}
-                    <div className="px-3 py-3 border-t border-gray-100 dark:border-zinc-800">
+                    <div className="px-3 py-3 border-t border-zinc-800">
                         {isLoggedIn ? (
                             <div className="space-y-2">
-                                <div className="px-3 py-2 bg-gray-50 dark:bg-zinc-800/80 rounded-xl">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                <div className="px-3.5 py-2.5 bg-zinc-800/80 rounded-xl flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <p className="text-sm font-bold text-white leading-tight">
                                             {user?.full_name || 'Player'}
                                         </p>
+                                        {user?.phone_number && (
+                                            <p className="text-xs text-zinc-400 leading-tight mt-0.5">
+                                                {user.phone_number}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
                                         {user?.is_superuser ? (
-                                            <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                                            <span className="text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded-full">
                                                 Superuser
                                             </span>
                                         ) : user?.role === 'admin' ? (
-                                            <span className="text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                            <span className="text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800/60 px-2 py-0.5 rounded-full">
                                                 Admin
                                             </span>
                                         ) : user?.role === 'staff' ? (
-                                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+                                            <span className="text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded-full">
                                                 Staff
                                             </span>
                                         ) : (
-                                            <span className="text-[10px] font-semibold bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200 px-2 py-0.5 rounded-full">
+                                            <span className="text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded-full">
                                                 Customer
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-                                        {user?.phone_number}
-                                    </p>
                                 </div>
 
                                 {user?.is_superuser ? (
@@ -360,14 +449,14 @@ export default function Navbar() {
                                         <Link
                                             href="/admin"
                                             onClick={() => setMobileMenuOpen(false)}
-                                            className="block px-3 py-2.5 rounded-xl text-xs font-bold text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+                                            className="block px-3.5 py-2.5 rounded-xl text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
                                         >
                                             System Admin Console
                                         </Link>
                                         <Link
                                             href="/admin?tab=team"
                                             onClick={() => setMobileMenuOpen(false)}
-                                            className="block px-3 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
+                                            className="block px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
                                         >
                                             Team & Staff Control
                                         </Link>
@@ -377,14 +466,14 @@ export default function Navbar() {
                                         <Link
                                             href="/admin"
                                             onClick={() => setMobileMenuOpen(false)}
-                                            className="block px-3 py-2.5 rounded-xl text-xs font-bold text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                                            className="block px-3.5 py-2.5 rounded-xl text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
                                         >
-                                            Operations & Staff Desk
+                                            Operations Desk
                                         </Link>
                                         <Link
                                             href="/admin?tab=team"
                                             onClick={() => setMobileMenuOpen(false)}
-                                            className="block px-3 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
+                                            className="block px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
                                         >
                                             Staff Management
                                         </Link>
@@ -393,15 +482,15 @@ export default function Navbar() {
                                     <Link
                                         href="/admin"
                                         onClick={() => setMobileMenuOpen(false)}
-                                        className="block px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                                        className="block px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
                                     >
-                                        Operations & Staff Desk
+                                        Operations Desk
                                     </Link>
                                 ) : (
                                     <Link
                                         href="/dashboard"
                                         onClick={() => setMobileMenuOpen(false)}
-                                        className="block px-3 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 transition-colors"
+                                        className="block px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
                                     >
                                         My Bookings & Dashboard
                                     </Link>
@@ -409,7 +498,7 @@ export default function Navbar() {
 
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full block px-3 py-2.5 rounded-xl text-center text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                                    className="w-full block px-3.5 py-2.5 rounded-xl text-center text-sm font-bold text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer"
                                 >
                                     Log Out
                                 </button>
@@ -419,14 +508,14 @@ export default function Navbar() {
                                 <Link
                                     href="/login"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="block px-4 py-2.5 rounded-xl text-center text-sm font-bold text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800 border border-gray-200 dark:border-zinc-700 transition-colors"
+                                    className="block px-4 py-2.5 rounded-xl text-center text-sm font-bold text-zinc-200 hover:bg-zinc-800 border border-zinc-700 transition-colors"
                                 >
                                     Login
                                 </Link>
                                 <Link
                                     href="/register"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="block px-4 py-2.5 rounded-xl text-center text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
+                                    className="block px-4 py-2.5 rounded-xl text-center text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 transition-colors shadow-sm"
                                 >
                                     Register
                                 </Link>

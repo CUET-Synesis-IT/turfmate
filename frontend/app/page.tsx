@@ -295,7 +295,7 @@ export default function Home() {
             </section>
 
             {/* SECTION 6: FAQS */}
-            <section className="py-20 sm:py-28 bg-zinc-950">
+            <section id="faqs-section" className="py-20 sm:py-28 bg-zinc-950 scroll-mt-16">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-14">
                         <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">

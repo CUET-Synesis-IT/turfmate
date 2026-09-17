@@ -49,7 +49,7 @@ const amenities = [
 
 export default function AmenitiesSection() {
     return (
-        <section className="py-16 sm:py-24 bg-zinc-50 dark:bg-zinc-950">
+        <section id="amenities-section" className="py-16 sm:py-24 bg-zinc-50 dark:bg-zinc-950 scroll-mt-16">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="text-center max-w-3xl mx-auto mb-16">
