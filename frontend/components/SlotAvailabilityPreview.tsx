@@ -37,13 +37,13 @@ interface SlotAvailabilityPreviewProps {
     venueName?: string;
 }
 
-// Utility to parse ISO or standard time string to a clean 12-hour display e.g. "07:00 AM"
+// Utility to parse UTC ISO time string to client local timezone 12-hour display e.g. "07:00 AM"
 function formatSlotTime(timeStr: string): string {
     if (!timeStr) return '';
     if (timeStr.includes('T')) {
         const d = new Date(timeStr);
-        const hours = d.getUTCHours();
-        const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+        const hours = d.getHours();
+        const minutes = d.getMinutes().toString().padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
         const h12 = hours % 12 || 12;
         return `${h12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
@@ -54,7 +54,7 @@ function formatSlotTime(timeStr: string): string {
 function getSlotPeriod(timeStr: string): 'morning' | 'afternoon' | 'prime_night' {
     let hour = 12;
     if (timeStr && timeStr.includes('T')) {
-        hour = new Date(timeStr).getUTCHours();
+        hour = new Date(timeStr).getHours();
     }
     if (hour < 12) return 'morning';
     if (hour < 17) return 'afternoon';

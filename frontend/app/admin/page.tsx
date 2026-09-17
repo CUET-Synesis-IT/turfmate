@@ -203,9 +203,8 @@ export default function AdminDeskPage() {
         setIsSubmittingWalkin(true);
         setWalkinError(null);
 
-        // Calculate ISO start/end
-        const [startH, startM] = walkinStartHour.split(':');
-        const startDt = new Date(`${walkinDate}T${walkinStartHour}:00Z`);
+        // Calculate ISO start/end in client local timezone
+        const startDt = new Date(`${walkinDate}T${walkinStartHour}:00`);
         const endDt = new Date(startDt.getTime() + 60 * 60 * 1000); // 1 hour
 
         try {
@@ -242,8 +241,8 @@ export default function AdminDeskPage() {
         setIsSubmittingBlock(true);
         setBlockError(null);
 
-        const startDt = new Date(`${blockDate}T${blockStartHour}:00Z`);
-        const endDt = new Date(`${blockDate}T${blockEndHour}:00Z`);
+        const startDt = new Date(`${blockDate}T${blockStartHour}:00`);
+        const endDt = new Date(`${blockDate}T${blockEndHour}:00`);
 
         try {
             await bookingService.createCourtBlock({
@@ -303,13 +302,13 @@ export default function AdminDeskPage() {
         }
     };
 
-    // Formatting helpers
+    // Formatting helpers in client local timezone
     const formatTime = (isoString?: string) => {
         if (!isoString) return '';
         try {
             const d = new Date(isoString);
-            const hours = d.getUTCHours();
-            const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+            const hours = d.getHours();
+            const minutes = d.getMinutes().toString().padStart(2, '0');
             const ampm = hours >= 12 ? 'PM' : 'AM';
             const h12 = hours % 12 || 12;
             return `${h12.toString().padStart(2, '0')}:${minutes} ${ampm}`;

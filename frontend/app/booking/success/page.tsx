@@ -65,13 +65,13 @@ function BookingSuccessContent() {
         }
     };
 
-    // Format times
+    // Format times in client local timezone
     const formatTime = (isoString?: string) => {
         if (!isoString) return '';
         try {
             const d = new Date(isoString);
-            const hours = d.getUTCHours();
-            const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+            const hours = d.getHours();
+            const minutes = d.getMinutes().toString().padStart(2, '0');
             const ampm = hours >= 12 ? 'PM' : 'AM';
             const h12 = hours % 12 || 12;
             return `${h12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
