@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -18,24 +18,70 @@ import {
     MapPin,
     CreditCard,
     ShieldCheck,
-    Banknote
+    Banknote,
+    Loader2
 } from 'lucide-react';
-import { mockVenue, mockCourts, mockSlots, mockTestimonials, mockFaqs } from '@/lib/mockData';
-import PitchCard from '@/components/PitchCard';
+import { Venue, Court } from '@/types';
+import { venueService } from '@/services/venueService';
+import { mockTestimonials, mockFaqs } from '@/lib/mockData';
+import VenuePitchExplorer from '@/components/VenuePitchExplorer';
 import SlotAvailabilityPreview from '@/components/SlotAvailabilityPreview';
 import AmenitiesSection from '@/components/AmenitiesSection';
 import FaqAccordion from '@/components/FaqAccordion';
 
 export default function Home() {
-    const [pitchFilter, setPitchFilter] = useState<'all' | '5-a-side' | '7-a-side'>('all');
-    const [selectedCourtId, setSelectedCourtId] = useState<string>('court-1');
+    const [venues, setVenues] = useState<Venue[]>([]);
+    const [selectedVenueId, setSelectedVenueId] = useState<string>('');
+    const [courts, setCourts] = useState<Court[]>([]);
+    const [selectedCourtId, setSelectedCourtId] = useState<string>('');
+    const [isLoadingVenues, setIsLoadingVenues] = useState<boolean>(true);
+    const [isLoadingCourts, setIsLoadingCourts] = useState<boolean>(false);
 
-    const filteredCourts = mockCourts.filter((c) => {
-        if (pitchFilter === 'all') return true;
-        if (pitchFilter === '5-a-side') return c.court_size?.includes('5') || false;
-        if (pitchFilter === '7-a-side') return c.court_size?.includes('7') || false;
-        return true;
-    });
+    // Initial load: fetch all active venues from backend
+    useEffect(() => {
+        async function loadVenues() {
+            try {
+                setIsLoadingVenues(true);
+                const data = await venueService.getVenues();
+                setVenues(data || []);
+                if (data && data.length > 0) {
+                    setSelectedVenueId(data[0].id);
+                }
+            } catch (err) {
+                console.error('Failed to load venues from API:', err);
+            } finally {
+                setIsLoadingVenues(false);
+            }
+        }
+        loadVenues();
+    }, []);
+
+    // When active venue changes, fetch its courts
+    useEffect(() => {
+        if (!selectedVenueId) return;
+
+        async function loadCourts() {
+            try {
+                setIsLoadingCourts(true);
+                const venueCourts = await venueService.getVenueCourts(selectedVenueId);
+                setCourts(venueCourts || []);
+                if (venueCourts && venueCourts.length > 0) {
+                    setSelectedCourtId(venueCourts[0].id);
+                } else {
+                    setSelectedCourtId('');
+                }
+            } catch (err) {
+                console.error('Failed to load courts for selected venue:', err);
+                setCourts([]);
+                setSelectedCourtId('');
+            } finally {
+                setIsLoadingCourts(false);
+            }
+        }
+        loadCourts();
+    }, [selectedVenueId]);
+
+    const activeVenue = venues.find((v) => v.id === selectedVenueId) || venues[0];
 
     const scrollToSection = (id: string) => {
         const element = document.getElementById(id);
@@ -68,7 +114,7 @@ export default function Home() {
                     <div className="inline-flex items-center gap-2 bg-emerald-500/15 backdrop-blur-xl border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full mb-6 shadow-lg shadow-emerald-950/50 animate-in slide-in-from-top-4 duration-700">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                         <Sparkles size={14} className="text-emerald-400" />
-                        <span>GEC Circle • Chattogram&apos;s Premier Arena</span>
+                        <span>{activeVenue ? `${activeVenue.area} • ${activeVenue.district}'s Premier Arena` : 'Premier Sports Turf Arenas'}</span>
                     </div>
 
                     {/* Main Headline */}
@@ -81,25 +127,25 @@ export default function Home() {
 
                     {/* Subheadline */}
                     <p className="max-w-2xl text-base sm:text-lg lg:text-xl text-zinc-300 font-normal leading-relaxed mb-10">
-                        FIFA-certified 5v5 & 7v7 artificial grass pitches with 350+ Lux floodlights. Seamless mobile phone identity, concurrency slot engine, and instant SSLCOMMERZ checkout.
+                        FIFA-certified artificial grass pitches across top arenas. Real-time slot locking, transparent day/night floodlight rates, and instant SSLCOMMERZ checkout.
                     </p>
 
                     {/* Main Action CTAs */}
                     <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-14">
                         <button
-                            onClick={() => scrollToSection('availability-section')}
+                            onClick={() => scrollToSection('venues-section')}
                             className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:from-emerald-600 active:to-teal-700 text-white font-black text-base px-8 py-4 rounded-2xl shadow-xl shadow-emerald-900/40 hover:scale-105 transition-all duration-200 cursor-pointer"
                         >
                             <Calendar size={19} />
-                            <span>Check Real-Time Slots</span>
+                            <span>Browse Arenas & Pitches</span>
                             <ArrowRight size={18} />
                         </button>
 
                         <button
-                            onClick={() => scrollToSection('pitches-section')}
+                            onClick={() => scrollToSection('availability-section')}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 backdrop-blur-xl text-white border border-white/20 font-bold text-base px-8 py-4 rounded-2xl transition-all duration-200 cursor-pointer hover:border-emerald-400/50"
                         >
-                            <span>Explore Pitches & Rates</span>
+                            <span>Live Slot Availability</span>
                         </button>
                     </div>
 
@@ -116,8 +162,8 @@ export default function Home() {
                             <span className="text-xs text-zinc-400 mt-1">Broadcast Night Lights</span>
                         </div>
                         <div className="flex flex-col items-center">
-                            <span className="text-2xl sm:text-3xl font-black text-white">৳1,200</span>
-                            <span className="text-xs text-zinc-400 mt-1">Starting Hourly Day Rate</span>
+                            <span className="text-2xl sm:text-3xl font-black text-white">৳1,000+</span>
+                            <span className="text-xs text-zinc-400 mt-1">Starting Hourly Rate</span>
                         </div>
                         <div className="flex flex-col items-center">
                             <span className="text-2xl sm:text-3xl font-black text-emerald-400">100% Lock</span>
@@ -127,88 +173,32 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* VENUE SPOTLIGHT BAR */}
-            <section className="bg-zinc-900 border-y border-zinc-800 py-3.5 px-4 text-xs sm:text-sm">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="font-extrabold text-white">{mockVenue.name}:</span>
-                        <span className="text-zinc-400">{mockVenue.address}, {mockVenue.district}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-zinc-300">
-                        <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                            <Clock size={14} /> Open 07:00 AM – 01:00 AM Daily
-                        </span>
-                        <span>•</span>
-                        <span className="text-zinc-400">SSLCOMMERZ & Counter Cash</span>
-                    </div>
-                </div>
-            </section>
+            {/* SECTION 1: VENUE PICKER & DEPENDENT PITCH SLIDER */}
+            <VenuePitchExplorer
+                venues={venues}
+                selectedVenueId={selectedVenueId}
+                onSelectVenue={(vId) => setSelectedVenueId(vId)}
+                courts={courts}
+                selectedCourtId={selectedCourtId}
+                onSelectCourt={(cId) => setSelectedCourtId(cId)}
+            />
 
-            {/* SECTION 2: FEATURED PITCHES */}
-            <section id="pitches-section" className="py-20 sm:py-28 bg-zinc-950 scroll-mt-20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Section Header */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-                        <div>
-                            <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
-                                <Trophy size={13} />
-                                <span>World-Class Playing Fields</span>
-                            </div>
-                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
-                                Pick Your Playing Pitch
-                            </h2>
-                            <p className="text-sm sm:text-base text-zinc-400 mt-2">
-                                Engineered pitches for explosive 5-a-side sprints and professional 7-a-side tournaments.
-                            </p>
-                        </div>
-
-                        {/* Filter Tabs */}
-                        <div className="flex items-center gap-1.5 bg-zinc-900 p-1.5 rounded-2xl border border-zinc-800 self-start md:self-auto">
-                            {(['all', '5-a-side', '7-a-side'] as const).map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setPitchFilter(tab)}
-                                    className={`px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${pitchFilter === tab
-                                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
-                                        : 'text-zinc-400 hover:text-white'
-                                        }`}
-                                >
-                                    {tab === 'all' ? 'All Pitches' : tab}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Pitches Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredCourts.map((court) => (
-                            <PitchCard
-                                key={court.id}
-                                court={court}
-                                onSelectCourt={(courtId) => setSelectedCourtId(courtId)}
-                            />
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* SECTION 3: LIVE AVAILABILITY SIMULATOR */}
+            {/* SECTION 2: LIVE AVAILABILITY SIMULATOR */}
             <section className="py-14 sm:py-20 bg-zinc-900/60 border-y border-zinc-800/80">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <SlotAvailabilityPreview
-                        courts={mockCourts}
-                        initialSlots={mockSlots}
+                        courts={courts}
                         selectedCourtId={selectedCourtId}
                         onCourtSelect={(courtId) => setSelectedCourtId(courtId)}
+                        venueName={activeVenue?.name}
                     />
                 </div>
             </section>
 
-            {/* SECTION 4: WORLD-CLASS AMENITIES */}
+            {/* SECTION 3: WORLD-CLASS AMENITIES */}
             <AmenitiesSection />
 
-            {/* SECTION 5: HOW TURFMATE WORKS (STEP-BY-STEP) */}
+            {/* SECTION 4: HOW TURFMATE WORKS (STEP-BY-STEP) */}
             <section className="py-20 sm:py-28 bg-zinc-950">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center max-w-3xl mx-auto mb-16">
@@ -219,100 +209,83 @@ export default function Home() {
                         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
                             From Phone to Pitch in 60 Seconds
                         </h2>
-                        <p className="text-sm sm:text-base text-zinc-400 mt-3">
-                            No manual phone calls or cash-in-hand negotiations. Fast, reliable digital booking.
+                        <p className="text-base text-zinc-400 mt-3">
+                            No endless WhatsApp messaging or missed phone calls. Real-time slot locking with instant mobile payment.
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        {/* Step 1 */}
-                        <div className="bg-zinc-900/80 p-7 rounded-3xl border border-zinc-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between">
-                            <div>
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-lg flex items-center justify-center mb-5 shadow-lg shadow-emerald-950">
-                                    1
+                        {[
+                            {
+                                step: '01',
+                                title: 'Select Arena & Pitch',
+                                desc: 'Pick your preferred venue and sport pitch (7v7, 5v5, Badminton) above.',
+                                icon: Trophy,
+                            },
+                            {
+                                step: '02',
+                                title: 'Pick Slot & Time',
+                                desc: 'Choose daytime or prime floodlight night slots on the interactive calendar.',
+                                icon: Calendar,
+                            },
+                            {
+                                step: '03',
+                                title: 'SSLCOMMERZ Checkout',
+                                desc: 'Instant deposit payment via bKash, Nagad, Visa, Mastercard, or Amex.',
+                                icon: CreditCard,
+                            },
+                            {
+                                step: '04',
+                                title: 'Show Up & Kick Off',
+                                desc: 'Receive instant SMS with your booking pass code. FIFA match ball included.',
+                                icon: Flame,
+                            },
+                        ].map((item, idx) => {
+                            const Icon = item.icon;
+                            return (
+                                <div
+                                    key={idx}
+                                    className="relative bg-zinc-900/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-800 hover:border-emerald-500/40 transition-all group flex flex-col justify-between"
+                                >
+                                    <div className="text-4xl font-black text-emerald-500/20 group-hover:text-emerald-500/40 transition-colors mb-6">
+                                        {item.step}
+                                    </div>
+                                    <div>
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <Icon size={22} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                                        <p className="text-xs text-zinc-400 leading-relaxed">{item.desc}</p>
+                                    </div>
                                 </div>
-                                <h3 className="text-lg font-bold text-white mb-2">
-                                    Pick Pitch & Slot
-                                </h3>
-                                <p className="text-xs text-zinc-400 leading-relaxed">
-                                    Select 5v5 or 7v7 and see real-time availability with day vs night rate calculations.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Step 2 */}
-                        <div className="bg-zinc-900/80 p-7 rounded-3xl border border-zinc-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between">
-                            <div>
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-lg flex items-center justify-center mb-5 shadow-lg shadow-emerald-950">
-                                    2
-                                </div>
-                                <h3 className="text-lg font-bold text-white mb-2">
-                                    Phone Authentication
-                                </h3>
-                                <p className="text-xs text-zinc-400 leading-relaxed">
-                                    Enter your Bangladeshi mobile number (e.g. 01575085455). Instant session access.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Step 3 */}
-                        <div className="bg-zinc-900/80 p-7 rounded-3xl border border-zinc-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between">
-                            <div>
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-lg flex items-center justify-center mb-5 shadow-lg shadow-emerald-950">
-                                    3
-                                </div>
-                                <h3 className="text-lg font-bold text-white mb-2">
-                                    SSLCOMMERZ Checkout
-                                </h3>
-                                <p className="text-xs text-zinc-400 leading-relaxed">
-                                    Pay securely using bKash, Nagad, or Cards online, or choose Desk Cash recording.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Step 4 */}
-                        <div className="bg-zinc-900/80 p-7 rounded-3xl border border-zinc-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between">
-                            <div>
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-lg flex items-center justify-center mb-5 shadow-lg shadow-emerald-950">
-                                    4
-                                </div>
-                                <h3 className="text-lg font-bold text-white mb-2">
-                                    Kick Off & Replays
-                                </h3>
-                                <p className="text-xs text-zinc-400 leading-relaxed">
-                                    Receive your booking reference <code className="text-emerald-400">TM-XXXX</code>. Turn up, grab your ball, and play!
-                                </p>
-                            </div>
-                        </div>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
 
-            {/* SECTION 6: PLAYER REVIEWS & TESTIMONIALS */}
-            <section className="py-20 sm:py-28 bg-zinc-900/40 border-t border-zinc-800/80">
+            {/* SECTION 5: SOCIAL PROOF & PLAYER REVIEWS */}
+            <section className="py-20 sm:py-24 bg-zinc-900/50 border-t border-zinc-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center max-w-3xl mx-auto mb-16">
-                        <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 text-xs font-bold px-3 py-1 rounded-full mb-3">
-                            <Star size={13} className="fill-amber-400" />
-                            <span>Loved by Over 380+ Squads</span>
+                    <div className="text-center max-w-2xl mx-auto mb-16">
+                        <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full mb-3">
+                            <Star size={13} className="fill-emerald-400" />
+                            <span>Player Experiences</span>
                         </div>
-                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
-                            Player Community Reviews
+                        <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                            Loved by 400+ Teams Across Bangladesh
                         </h2>
-                        <p className="text-sm sm:text-base text-zinc-400 mt-2">
-                            From casual late-night friendlies to high-stakes corporate league finals in Chattogram.
-                        </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {mockTestimonials.map((t) => (
                             <div
                                 key={t.id}
-                                className="bg-zinc-900/80 p-8 rounded-3xl border border-zinc-800 hover:border-zinc-700 shadow-lg flex flex-col justify-between"
+                                className="bg-zinc-900/90 rounded-3xl p-7 border border-zinc-800 flex flex-col justify-between shadow-xl"
                             >
                                 <div>
                                     <div className="flex items-center gap-1 text-amber-400 mb-4">
-                                        {[...Array(t.rating)].map((_, i) => (
+                                        {Array.from({ length: t.rating }).map((_, i) => (
                                             <Star key={i} size={15} className="fill-amber-400" />
                                         ))}
                                     </div>
@@ -321,18 +294,19 @@ export default function Home() {
                                     </p>
                                 </div>
 
-                                <div className="flex items-center gap-3.5 pt-5 border-t border-zinc-800">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-xs flex items-center justify-center flex-shrink-0">
-                                        {t.avatar}
+                                <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-black text-sm text-white">
+                                            {t.avatar}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-white">{t.name}</div>
+                                            <div className="text-xs text-zinc-400">{t.teamName}</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-white">
-                                            {t.name}
-                                        </h4>
-                                        <p className="text-xs text-zinc-400">
-                                            {t.role}, {t.teamName}
-                                        </p>
-                                    </div>
+                                    <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-800/40">
+                                        {t.matchType}
+                                    </span>
                                 </div>
                             </div>
                         ))}
@@ -340,18 +314,15 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* SECTION 7: FAQ */}
+            {/* SECTION 6: FAQS */}
             <section className="py-20 sm:py-28 bg-zinc-950">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center max-w-3xl mx-auto mb-12">
-                        <div className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full mb-3">
-                            <span>Got Questions?</span>
-                        </div>
-                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-14">
+                        <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
                             Frequently Asked Questions
                         </h2>
-                        <p className="text-sm sm:text-base text-zinc-400 mt-2">
-                            Rules, footwear advice, SSLCOMMERZ payments, and cancellation guarantees.
+                        <p className="text-sm text-zinc-400 mt-2">
+                            Rules, studs policy, cancellation, and night floodlight details.
                         </p>
                     </div>
 
@@ -359,37 +330,26 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* SECTION 8: HIGH-ENERGY CTA BANNER */}
-            <section className="py-16 sm:py-24 bg-zinc-950 relative overflow-hidden">
-                <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <div className="bg-gradient-to-br from-zinc-900 via-emerald-950 to-zinc-900 border border-emerald-500/30 rounded-3xl p-8 sm:p-14 shadow-2xl">
-                        <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-4">
-                            Ready to Claim Tonight&apos;s Prime Slot?
-                        </h2>
-                        <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto mb-8">
-                            Floodlight hours between 6:00 PM and 10:00 PM book up quickly. Secure your turf with bKash or cash before kick-off.
-                        </p>
-
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <button
-                                onClick={() => scrollToSection('availability-section')}
-                                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-base px-8 py-4 rounded-2xl shadow-xl shadow-emerald-900/40 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                                <Calendar size={18} />
-                                <span>Check Available Slots</span>
-                            </button>
-
-                            <Link
-                                href="/register"
-                                className="w-full sm:w-auto bg-white hover:bg-zinc-100 text-gray-950 font-extrabold text-base px-8 py-4 rounded-2xl shadow-md transition-all duration-200 flex items-center justify-center gap-2"
-                            >
-                                <Phone size={18} className="text-emerald-600" />
-                                <span>Register via Phone</span>
-                            </Link>
-                        </div>
-                    </div>
+            {/* FINAL CALL TO ACTION */}
+            <section className="py-20 bg-gradient-to-b from-zinc-950 to-black text-center relative overflow-hidden">
+                <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-4">
+                        Ready to Lace Up?
+                    </h2>
+                    <p className="text-base sm:text-lg text-zinc-300 max-w-xl mx-auto mb-8">
+                        The pitch is prepped. The floodlights are dialed in. Lock your squad&apos;s hour before someone else takes it.
+                    </p>
+                    <button
+                        onClick={() => scrollToSection('venues-section')}
+                        className="inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-base px-8 py-4 rounded-2xl shadow-2xl shadow-emerald-900/50 hover:scale-105 transition-all cursor-pointer"
+                    >
+                        <Calendar size={20} />
+                        <span>Book Your Pitch Slot Now</span>
+                        <ArrowRight size={18} />
+                    </button>
                 </div>
             </section>
+
         </div>
     );
 }

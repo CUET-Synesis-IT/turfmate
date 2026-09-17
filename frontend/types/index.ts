@@ -31,6 +31,8 @@ export interface Venue {
     google_maps_url?: string | null;
     opening_time: string; // e.g. "07:00:00"
     closing_time: string; // e.g. "01:00:00"
+    contact_phone?: string | null;
+    contact_email?: string | null;
     status: FacilityStatus;
     status_note?: string | null;
     is_active: boolean;

@@ -31,6 +31,15 @@ class StaffCreate(BaseModel):
     avatar_url: Optional[str] = None
 
 
+class AdminCreate(BaseModel):
+    """Schema for Superuser creating business admin accounts."""
+    phone_number: str = Field(min_length=6, max_length=20)
+    full_name: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=6, max_length=128)
+    email: Optional[EmailStr] = None
+    avatar_url: Optional[str] = None
+
+
 class UserUpdateMe(BaseModel):
     """Schema for users updating their own profile. Strictly prevents role escalation."""
     email: Optional[EmailStr] = None

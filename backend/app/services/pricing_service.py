@@ -135,14 +135,21 @@ def calculate_slot_price(
     day_of_week = slot_time.weekday()  # 0=Monday, 4=Friday, 6=Sunday
     t = slot_time.time()
 
+    def _matches_rule_time(rule: PricingRule, check_time: time) -> bool:
+        if rule.end_time == time(0, 0):
+            return rule.start_time <= check_time
+        if rule.start_time < rule.end_time:
+            return rule.start_time <= check_time < rule.end_time
+        return rule.start_time <= check_time or check_time < rule.end_time
+
     # 1. Day-specific rule match
     for rule in rules:
-        if rule.day_of_week == day_of_week and rule.start_time <= t < rule.end_time:
+        if rule.day_of_week == day_of_week and _matches_rule_time(rule, t):
             return rule.price_per_hour
 
     # 2. General all-days rule match
     for rule in rules:
-        if rule.day_of_week is None and rule.start_time <= t < rule.end_time:
+        if rule.day_of_week is None and _matches_rule_time(rule, t):
             return rule.price_per_hour
 
     # 3. Fallback to court default

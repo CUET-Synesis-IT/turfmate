@@ -1,11 +1,12 @@
 from typing import Annotated, Optional
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from app.api.deps import CurrentUserDep, SessionDep, require_roles
+from app.api.deps import CurrentUserDep, SessionDep, get_current_superuser, require_roles
 from app.core.security import get_password_hash
 from app.crud import user as user_crud
 from app.models.user import User, UserRole
 from app.schemas.user import (
+    AdminCreate,
     StaffCreate,
     UserRegister,
     UserResponse,
@@ -57,6 +58,50 @@ def update_current_user_profile(
         hashed_password=hashed_password,
     )
     return UserResponse.model_validate(updated_user)
+
+
+@router.post(
+    "/admin",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new business admin (Superuser only)",
+)
+def create_admin_user(
+    admin_in: AdminCreate,
+    current_superuser: Annotated[User, Depends(get_current_superuser)],
+    session: SessionDep,
+) -> UserResponse:
+    """Create a new business admin account with ADMIN role. Allowed only for platform Superusers."""
+    existing_phone = user_crud.get_user_by_phone(session, admin_in.phone_number)
+    if existing_phone:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with this phone number already exists.",
+        )
+
+    if admin_in.email:
+        existing_email = user_crud.get_user_by_email(session, admin_in.email)
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A user with this email address already exists.",
+            )
+
+    hashed_password = get_password_hash(admin_in.password)
+    user_reg = UserRegister(
+        phone_number=admin_in.phone_number,
+        full_name=admin_in.full_name,
+        email=admin_in.email,
+        password=admin_in.password,
+        avatar_url=admin_in.avatar_url,
+    )
+    admin_user = user_crud.create_user(
+        session=session,
+        user_in=user_reg,
+        hashed_password=hashed_password,
+        role=UserRole.ADMIN,
+    )
+    return UserResponse.model_validate(admin_user)
 
 
 @router.post(
