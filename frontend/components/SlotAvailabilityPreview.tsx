@@ -241,7 +241,7 @@ export default function SlotAvailabilityPreview({
         fetchSlots(activeCourtId, activeDate);
     }, [activeCourtId, activeDate]);
 
-    // Background polling: quietly sync slot availability every 20 seconds
+    // Background polling: quietly sync slot availability every 5 seconds
     useEffect(() => {
         if (!activeCourtId || !activeDate) return;
 
@@ -273,7 +273,7 @@ export default function SlotAvailabilityPreview({
                 .catch(() => {
                     // Quiet background catch
                 });
-        }, 20000);
+        }, 5000);
 
         return () => clearInterval(pollInterval);
     }, [activeCourtId, activeDate, currentCourt?.name]);
