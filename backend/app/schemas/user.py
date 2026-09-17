@@ -7,7 +7,7 @@ from app.models.user import UserRole
 
 class UserBase(BaseModel):
     phone_number: str = Field(min_length=6, max_length=20, description="Primary user phone number")
-    email: Optional[EmailStr] = Field(default=None, description="Optional user email address")
+    email: Optional[str] = Field(default=None, description="Optional user email address")
     full_name: str = Field(min_length=1, max_length=100)
     avatar_url: Optional[str] = None
 
@@ -24,6 +24,15 @@ class UserCreate(UserRegister):
 
 class StaffCreate(BaseModel):
     """Schema for Admin creating staff members."""
+    phone_number: str = Field(min_length=6, max_length=20)
+    full_name: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=6, max_length=128)
+    email: Optional[EmailStr] = None
+    avatar_url: Optional[str] = None
+
+
+class AdminCreate(BaseModel):
+    """Schema for Superuser creating business admin accounts."""
     phone_number: str = Field(min_length=6, max_length=20)
     full_name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=6, max_length=128)

@@ -31,6 +31,8 @@ export interface Venue {
     google_maps_url?: string | null;
     opening_time: string; // e.g. "07:00:00"
     closing_time: string; // e.g. "01:00:00"
+    contact_phone?: string | null;
+    contact_email?: string | null;
     status: FacilityStatus;
     status_note?: string | null;
     is_active: boolean;
@@ -69,7 +71,7 @@ export interface SlotInfo {
     end_time: string;
     price: number;
     is_available: boolean;
-    status: 'available' | 'booked' | 'blocked' | 'maintenance';
+    status: 'available' | 'booked' | 'pending' | 'blocked' | 'maintenance';
     reason?: string | null;
     period?: 'morning' | 'afternoon' | 'prime_night';
 }
@@ -113,6 +115,7 @@ export interface BookingResponse {
     internal_notes?: string | null;
     cancellation_reason?: string | null;
     cancelled_at?: string | null;
+    expires_at?: string | null;
     created_at: string;
 }
 
@@ -123,6 +126,18 @@ export interface SSLCommerzInitResponse {
     transaction_id: string;
     amount: number;
     currency: string;
+}
+
+export interface PaymentRecord {
+    id: string;
+    booking_id: string;
+    amount: number;
+    payment_method: PaymentMethod;
+    status: PaymentStatus;
+    transaction_id?: string | null;
+    notes?: string | null;
+    created_at: string;
+    updated_at?: string;
 }
 
 export interface Testimonial {

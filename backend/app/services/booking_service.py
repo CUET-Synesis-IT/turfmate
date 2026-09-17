@@ -114,6 +114,9 @@ def get_court_availability(
     elif court_in_maintenance:
         maintenance_reason = f"Court under {court.status.value}: {court.status_note or 'Maintenance'}"
 
+    # Auto-expire any stale pending reservations before evaluating availability
+    booking_crud.expire_stale_pending_bookings(session, hold_minutes=10)
+
     # Fetch existing non-cancelled bookings
     existing_bookings = booking_crud.get_court_bookings_for_date(session, court_id, target_date)
 
@@ -150,14 +153,25 @@ def get_court_availability(
 
             if overlapping:
                 is_blocked = any(b.status == BookingStatus.BLOCKED for b in overlapping)
+                is_pending = any(b.status == BookingStatus.PENDING for b in overlapping)
+                if is_blocked:
+                    slot_status = "blocked"
+                    slot_reason = "Court is blocked for maintenance"
+                elif is_pending:
+                    slot_status = "pending"
+                    slot_reason = "Slot is temporarily held for payment checkout"
+                else:
+                    slot_status = "booked"
+                    slot_reason = "Slot is already booked"
+
                 slots.append(
                     SlotInfo(
                         start_time=current_slot_start,
                         end_time=current_slot_end,
                         price=slot_price,
                         is_available=False,
-                        status="blocked" if is_blocked else "booked",
-                        reason="Court is blocked" if is_blocked else "Slot is already booked",
+                        status=slot_status,
+                        reason=slot_reason,
                     )
                 )
             else:
@@ -269,6 +283,11 @@ def build_booking_response(session: Session, booking: Booking) -> BookingRespons
         )
 
     remaining = max(Decimal("0.00"), booking.total_amount - booking.deposit_paid)
+    expires_at = (
+        booking.created_at + timedelta(minutes=10)
+        if booking.status == BookingStatus.PENDING
+        else None
+    )
 
     return BookingResponse(
         id=booking.id,
@@ -288,6 +307,7 @@ def build_booking_response(session: Session, booking: Booking) -> BookingRespons
         cancellation_reason=booking.cancellation_reason,
         cancelled_at=booking.cancelled_at,
         created_by_user_id=booking.created_by_user_id,
+        expires_at=expires_at,
         created_at=booking.created_at,
         updated_at=booking.updated_at,
     )
@@ -318,6 +338,9 @@ def create_customer_booking(
 
     _validate_booking_window(session, court, venue, start_dt, end_dt)
 
+    # Release any expired pending holds before evaluating slot conflicts
+    booking_crud.expire_stale_pending_bookings(session, hold_minutes=10)
+
     # Concurrency-safe check with row locking
     conflicts = booking_crud.get_overlapping_bookings(
         session=session,
@@ -329,7 +352,7 @@ def create_customer_booking(
     if conflicts:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="The requested time slot is already booked or blocked.",
+            detail="The requested time slot is already booked or held for payment checkout.",
         )
 
     total_amount = calculate_booking_price(session, court.id, start_dt, end_dt)
@@ -404,6 +427,8 @@ def create_staff_booking(
         # Default to staff member if no customer specified
         customer_id = current_user.id
 
+    booking_crud.expire_stale_pending_bookings(session, hold_minutes=10)
+
     conflicts = booking_crud.get_overlapping_bookings(
         session=session,
         court_id=court.id,
@@ -452,6 +477,8 @@ def create_court_block(
 
     if start_dt >= end_dt:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="start_datetime must be before end_datetime")
+
+    booking_crud.expire_stale_pending_bookings(session, hold_minutes=10)
 
     conflicts = booking_crud.get_overlapping_bookings(
         session=session,

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, ChevronDown, User as UserIcon, LogOut, ShieldCheck, Phone, Calendar } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, ShieldCheck, Phone, Calendar, Users } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { User } from '@/lib/types';
 
@@ -92,7 +92,15 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
                             </p>
                             {user?.is_superuser ? (
                                 <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <ShieldCheck size={11} /> Superuser
+                                </span>
+                            ) : user?.role === 'admin' ? (
+                                <span className="text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <ShieldCheck size={11} /> Admin
+                                </span>
+                            ) : user?.role === 'staff' ? (
+                                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                                    Staff
                                 </span>
                             ) : (
                                 <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
@@ -116,22 +124,63 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
 
                     {/* Menu Items */}
                     <div className="py-1">
-                        <Link
-                            href="/dashboard"
-                            onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                        >
-                            <Calendar size={15} />
-                            <span>My Bookings & Dashboard</span>
-                        </Link>
-                        <Link
-                            href="/profile"
-                            onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                        >
-                            <UserIcon size={15} />
-                            <span>Edit Profile</span>
-                        </Link>
+                        {user?.is_superuser ? (
+                            <>
+                                <Link
+                                    href="/admin"
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-500 hover:bg-amber-500/10 transition-colors"
+                                >
+                                    <ShieldCheck size={15} />
+                                    <span>System Admin Console</span>
+                                </Link>
+                                <Link
+                                    href="/admin?tab=team"
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-amber-500/10 hover:text-amber-500 transition-colors"
+                                >
+                                    <Users size={15} />
+                                    <span>Team & Staff Control</span>
+                                </Link>
+                            </>
+                        ) : user?.role === 'admin' ? (
+                            <>
+                                <Link
+                                    href="/admin"
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-blue-500 hover:bg-blue-500/10 transition-colors"
+                                >
+                                    <ShieldCheck size={15} />
+                                    <span>Operations & Staff Desk</span>
+                                </Link>
+                                <Link
+                                    href="/admin?tab=team"
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
+                                >
+                                    <Users size={15} />
+                                    <span>Staff Team Management</span>
+                                </Link>
+                            </>
+                        ) : user?.role === 'staff' ? (
+                            <Link
+                                href="/admin"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                            >
+                                <ShieldCheck size={15} />
+                                <span>Operations & Staff Desk</span>
+                            </Link>
+                        ) : (
+                            <Link
+                                href="/dashboard"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                            >
+                                <Calendar size={15} />
+                                <span>My Bookings & Dashboard</span>
+                            </Link>
+                        )}
                     </div>
 
                     {/* Logout */}
@@ -279,13 +328,85 @@ export default function Navbar() {
                         {isLoggedIn ? (
                             <div className="space-y-2">
                                 <div className="px-3 py-2 bg-gray-50 dark:bg-zinc-800/80 rounded-xl">
-                                    <p className="text-sm font-bold text-gray-900 dark:text-white">
-                                        {user?.full_name || 'Player'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-zinc-400">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                            {user?.full_name || 'Player'}
+                                        </p>
+                                        {user?.is_superuser ? (
+                                            <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                                                Superuser
+                                            </span>
+                                        ) : user?.role === 'admin' ? (
+                                            <span className="text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                                Admin
+                                            </span>
+                                        ) : user?.role === 'staff' ? (
+                                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+                                                Staff
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-semibold bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200 px-2 py-0.5 rounded-full">
+                                                Customer
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
                                         {user?.phone_number}
                                     </p>
                                 </div>
+
+                                {user?.is_superuser ? (
+                                    <>
+                                        <Link
+                                            href="/admin"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="block px-3 py-2.5 rounded-xl text-xs font-bold text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+                                        >
+                                            System Admin Console
+                                        </Link>
+                                        <Link
+                                            href="/admin?tab=team"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="block px-3 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
+                                        >
+                                            Team & Staff Control
+                                        </Link>
+                                    </>
+                                ) : user?.role === 'admin' ? (
+                                    <>
+                                        <Link
+                                            href="/admin"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="block px-3 py-2.5 rounded-xl text-xs font-bold text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                                        >
+                                            Operations & Staff Desk
+                                        </Link>
+                                        <Link
+                                            href="/admin?tab=team"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="block px-3 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors"
+                                        >
+                                            Staff Management
+                                        </Link>
+                                    </>
+                                ) : user?.role === 'staff' ? (
+                                    <Link
+                                        href="/admin"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="block px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                                    >
+                                        Operations & Staff Desk
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href="/dashboard"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="block px-3 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 transition-colors"
+                                    >
+                                        My Bookings & Dashboard
+                                    </Link>
+                                )}
+
                                 <button
                                     onClick={handleLogout}
                                     className="w-full block px-3 py-2.5 rounded-xl text-center text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"

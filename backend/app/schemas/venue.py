@@ -15,7 +15,7 @@ class VenueBase(BaseModel):
     latitude: Optional[float] = Field(default=None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
     contact_phone: Optional[str] = Field(default=None, max_length=20)
-    contact_email: Optional[EmailStr] = None
+    contact_email: Optional[str] = None
     status: FacilityStatus = Field(default=FacilityStatus.ACTIVE, description="Facility operational status")
     status_note: Optional[str] = Field(default=None, description="Note on status (e.g. Closed for rain)")
     opening_time: time = Field(default=time(8, 0), description="Daily opening time")
@@ -42,7 +42,7 @@ class VenueUpdate(BaseModel):
     latitude: Optional[float] = Field(default=None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
     contact_phone: Optional[str] = Field(default=None, max_length=20)
-    contact_email: Optional[EmailStr] = None
+    contact_email: Optional[str] = None
     status: Optional[FacilityStatus] = None
     status_note: Optional[str] = None
     opening_time: Optional[time] = None

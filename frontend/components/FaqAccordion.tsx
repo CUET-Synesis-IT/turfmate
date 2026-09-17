@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { FaqItem } from '@/types';
-import { ChevronDown, HelpCircle } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface FaqAccordionProps {
     items: FaqItem[];
