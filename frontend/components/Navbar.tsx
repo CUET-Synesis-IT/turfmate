@@ -116,6 +116,16 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
 
                     {/* Menu Items */}
                     <div className="py-1">
+                        {(user?.is_superuser || user?.role === 'admin' || user?.role === 'staff') && (
+                            <Link
+                                href="/admin"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-500 hover:bg-amber-500/10 transition-colors"
+                            >
+                                <ShieldCheck size={15} />
+                                <span>Staff & Admin Desk</span>
+                            </Link>
+                        )}
                         <Link
                             href="/dashboard"
                             onClick={() => setIsOpen(false)}
@@ -123,14 +133,6 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
                         >
                             <Calendar size={15} />
                             <span>My Bookings & Dashboard</span>
-                        </Link>
-                        <Link
-                            href="/profile"
-                            onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-primary-50 dark:hover:bg-zinc-800 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                        >
-                            <UserIcon size={15} />
-                            <span>Edit Profile</span>
                         </Link>
                     </div>
 

@@ -1,10 +1,12 @@
 from datetime import date
 from typing import Optional
+import urllib.parse
 import uuid
 from fastapi import APIRouter, Depends, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlmodel import Session
 from app.api.deps import get_current_user, get_session, require_staff_or_admin
+from app.core.config import settings
 from app.crud import booking as booking_crud
 from app.crud import payment as payment_crud
 from app.models.payment import PaymentMethod, PaymentStatus
@@ -56,9 +58,9 @@ async def sslcommerz_success(
     tran_id = str(form_data.get("tran_id", "")).strip()
 
     if not val_id or not tran_id:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"status": "FAILED", "message": "Missing val_id or tran_id"},
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}/booking/failed?error=Missing+transaction+data",
+            status_code=status.HTTP_303_SEE_OTHER,
         )
 
     payment = sslcommerz_service.validate_sslcommerz_payment(
@@ -69,17 +71,24 @@ async def sslcommerz_success(
 
     if payment and payment.status == PaymentStatus.COMPLETED:
         booking = booking_crud.get_booking_by_id(session, payment.booking_id)
-        return {
-            "status": "SUCCESS",
-            "message": "Payment verified and booking confirmed successfully.",
-            "transaction_id": tran_id,
-            "booking_reference": booking.booking_reference if booking else None,
-            "amount": float(payment.amount),
-        }
+        booking_ref = booking.booking_reference if booking else ""
 
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={"status": "FAILED", "message": "Payment validation failed"},
+        accept_header = request.headers.get("accept", "")
+        if "application/json" in accept_header and "text/html" not in accept_header:
+            return {
+                "status": "SUCCESS",
+                "message": "Payment verified and booking confirmed successfully.",
+                "transaction_id": tran_id,
+                "booking_reference": booking_ref,
+                "amount": float(payment.amount),
+            }
+
+        redirect_url = f"{settings.FRONTEND_URL}/booking/success?ref={booking_ref}&tran_id={tran_id}&amount={float(payment.amount)}"
+        return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+    return RedirectResponse(
+        url=f"{settings.FRONTEND_URL}/booking/failed?tran_id={tran_id}&error=Payment+validation+failed",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
@@ -99,11 +108,17 @@ async def sslcommerz_fail(
     if tran_id:
         sslcommerz_service.handle_failed_payment(session, tran_id, reason=error_msg)
 
-    return {
-        "status": "FAILED",
-        "message": error_msg,
-        "transaction_id": tran_id,
-    }
+    accept_header = request.headers.get("accept", "")
+    if "application/json" in accept_header and "text/html" not in accept_header:
+        return {
+            "status": "FAILED",
+            "message": error_msg,
+            "transaction_id": tran_id,
+        }
+
+    encoded_error = urllib.parse.quote_plus(error_msg)
+    redirect_url = f"{settings.FRONTEND_URL}/booking/failed?tran_id={tran_id}&error={encoded_error}"
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post(
@@ -121,11 +136,16 @@ async def sslcommerz_cancel(
     if tran_id:
         sslcommerz_service.handle_failed_payment(session, tran_id, reason="Customer cancelled checkout")
 
-    return {
-        "status": "CANCELLED",
-        "message": "Payment was cancelled by user.",
-        "transaction_id": tran_id,
-    }
+    accept_header = request.headers.get("accept", "")
+    if "application/json" in accept_header and "text/html" not in accept_header:
+        return {
+            "status": "CANCELLED",
+            "message": "Payment was cancelled by user.",
+            "transaction_id": tran_id,
+        }
+
+    redirect_url = f"{settings.FRONTEND_URL}/booking/cancel?tran_id={tran_id}"
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post(

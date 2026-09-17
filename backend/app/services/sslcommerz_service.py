@@ -55,7 +55,7 @@ def initiate_sslcommerz_session(
     customer = user_crud.get_user_by_id(session, booking.customer_id)
     cus_name = customer.full_name if customer else "Turf Player"
     cus_phone = customer.phone_number if customer else "01700000000"
-    cus_email = (customer.email if customer and customer.email else "player@turfmate.local")
+    cus_email = (customer.email if customer and customer.email else "player@turfmate.com")
 
     tran_id = generate_transaction_id(booking.booking_reference)
     base_url = (backend_url or settings.BACKEND_API_URL).rstrip("/")

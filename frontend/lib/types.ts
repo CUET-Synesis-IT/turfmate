@@ -11,6 +11,7 @@ export interface User {
     full_name: string;
     email?: string | null;
     avatar_url?: string | null;
+    role?: 'admin' | 'staff' | 'customer';
     is_active: boolean;
     is_superuser: boolean;
     created_at?: string;
