@@ -178,7 +178,7 @@ function UserMenu({ user, onLogout }: UserMenuProps) {
                                 className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"
                             >
                                 <Calendar size={15} />
-                                <span>My Bookings & Matches</span>
+                                <span>My Bookings & Dashboard</span>
                             </Link>
                         )}
                     </div>
@@ -289,54 +289,26 @@ export default function Navbar() {
 
                     {/* Desktop Auth & Quick CTAs */}
                     <div className="hidden md:flex items-center gap-3">
-                        {isLoggedIn ? (
-                            <div className="flex items-center gap-3">
-                                {/* Role Quick Action Pill */}
-                                {user?.is_superuser || user?.role === 'admin' || user?.role === 'staff' ? (
-                                    <Link
-                                        href="/admin"
-                                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                                            pathname === '/admin'
-                                                ? 'bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20'
-                                                : 'bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
-                                        }`}
-                                    >
-                                        <ShieldCheck size={13} />
-                                        <span>Operations Hub</span>
-                                    </Link>
-                                ) : (
-                                    <Link
-                                        href="/dashboard"
-                                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                                            pathname === '/dashboard'
-                                                ? 'bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20'
-                                                : 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
-                                        }`}
-                                    >
-                                        <Calendar size={13} />
-                                        <span>My Bookings</span>
-                                    </Link>
-                                )}
+                        {!isLoggedIn && (
+                            <Link
+                                href="/login"
+                                className="px-3.5 py-2 text-xs sm:text-sm font-bold text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-colors cursor-pointer"
+                            >
+                                Log In
+                            </Link>
+                        )}
 
-                                <UserMenu user={user} onLogout={handleLogout} />
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2.5">
-                                <Link
-                                    href="/login"
-                                    className="px-3.5 py-2 text-xs sm:text-sm font-bold text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-colors cursor-pointer"
-                                >
-                                    Log In
-                                </Link>
-                                <Link
-                                    href="/#venues-section"
-                                    onClick={(e) => handleAnchorClick('/#venues-section', e)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl shadow-lg shadow-emerald-950/40 hover:scale-105 transition-all cursor-pointer"
-                                >
-                                    <Sparkles size={14} />
-                                    <span>Book Pitch</span>
-                                </Link>
-                            </div>
+                        <Link
+                            href="/#venues-section"
+                            onClick={(e) => handleAnchorClick('/#venues-section', e)}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl shadow-lg shadow-emerald-950/40 hover:scale-105 transition-all cursor-pointer"
+                        >
+                            <Sparkles size={14} />
+                            <span>Book Pitch</span>
+                        </Link>
+
+                        {isLoggedIn && (
+                            <UserMenu user={user} onLogout={handleLogout} />
                         )}
                     </div>
 
@@ -372,31 +344,6 @@ export default function Navbar() {
                                 {link.label}
                             </Link>
                         ))}
-
-                        {/* Mobile Quick Action Link */}
-                        {isLoggedIn && (
-                            <div className="pt-2 border-t border-zinc-800 mt-2 space-y-1">
-                                {user?.is_superuser || user?.role === 'admin' || user?.role === 'staff' ? (
-                                    <Link
-                                        href="/admin"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-bold text-amber-400 hover:bg-amber-500/10 transition-colors"
-                                    >
-                                        <ShieldCheck size={16} />
-                                        <span>Facility Operations Hub</span>
-                                    </Link>
-                                ) : (
-                                    <Link
-                                        href="/dashboard"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-                                    >
-                                        <Calendar size={16} />
-                                        <span>My Bookings & Match Passes</span>
-                                    </Link>
-                                )}
-                            </div>
-                        )}
                     </div>
 
                     {/* Mobile Auth Drawer */}
