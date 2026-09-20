@@ -588,3 +588,23 @@ def update_booking_status(
 
     booking = booking_crud.update_booking(session, booking, update_dict)
     return build_booking_response(session, booking)
+
+
+def delete_court_block(
+    session: Session,
+    booking_id: uuid.UUID,
+    current_user: User,
+) -> None:
+    """Delete / release a blocked court window or zero-deposit hold."""
+    booking = booking_crud.get_booking_by_id(session, booking_id)
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking or block not found")
+
+    if booking.status != BookingStatus.BLOCKED and booking.deposit_paid > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete a booking with recorded payments. Please cancel it instead.",
+        )
+
+    booking_crud.delete_booking(session, booking)
+

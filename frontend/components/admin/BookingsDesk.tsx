@@ -19,6 +19,7 @@ import {
     AlertCircle,
     ChevronLeft,
     ChevronRight,
+    Unlock,
 } from 'lucide-react';
 
 interface BookingsDeskProps {
@@ -70,6 +71,9 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
     const [showWalkinModal, setShowWalkinModal] = useState<boolean>(false);
     const [showBlockModal, setShowBlockModal] = useState<boolean>(false);
     const [paymentModalBooking, setPaymentModalBooking] = useState<BookingResponse | null>(null);
+    const [unblockModalBooking, setUnblockModalBooking] = useState<BookingResponse | null>(null);
+    const [isSubmittingUnblock, setIsSubmittingUnblock] = useState<boolean>(false);
+    const [unblockError, setUnblockError] = useState<string | null>(null);
 
     // Walk-in form state
     const [walkinCourtId, setWalkinCourtId] = useState<string>('');
@@ -222,6 +226,8 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                 blocked++;
             } else if (b.status === 'cancelled') {
                 cancelled++;
+            } else if (b.status === 'no_show') {
+                totalCollected += deposit;
             }
         });
 
@@ -373,6 +379,34 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
             );
             const errObj = err as { response?: { data?: { detail?: string } } };
             alert(errObj?.response?.data?.detail || 'Failed to update booking status. Reverted to previous state.');
+        }
+    };
+
+    // Delete / Release pitch hold via modal confirmation
+    const handleConfirmUnblock = async () => {
+        if (!unblockModalBooking) return;
+
+        const targetId = unblockModalBooking.id;
+        const prevBookings = [...bookings];
+
+        setIsSubmittingUnblock(true);
+        setUnblockError(null);
+
+        // 1. Optimistic removal (instant UI response, 0ms latency)
+        setBookings((prev) => prev.filter((b) => b.id !== targetId));
+
+        try {
+            // 2. Call backend delete endpoint
+            await bookingService.deleteBooking(targetId);
+            setUnblockModalBooking(null);
+        } catch (err: unknown) {
+            // 3. Rollback on failure
+            setBookings(prevBookings);
+            console.error('Failed to release hold:', err);
+            const errObj = err as { response?: { data?: { detail?: string } } };
+            setUnblockError(errObj?.response?.data?.detail || 'Failed to release pitch hold. Reverted changes.');
+        } finally {
+            setIsSubmittingUnblock(false);
         }
     };
 
@@ -598,6 +632,8 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                                 <option value="confirmed">Confirmed</option>
                                 <option value="pending">Pending</option>
                                 <option value="completed">Completed</option>
+                                <option value="blocked">Blocked / Hold</option>
+                                <option value="no_show">No Show</option>
                                 <option value="cancelled">Cancelled</option>
                             </select>
                         </div>
@@ -801,13 +837,27 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
 
                                             {/* Customer */}
                                             <td className="py-4 px-4">
-                                                <div className="font-semibold text-white">
-                                                    {b.customer?.full_name || b.customer_notes || 'Counter Guest'}
-                                                </div>
-                                                <div className="text-[11px] text-zinc-400 flex items-center gap-1">
-                                                    <Phone size={10} />
-                                                    <span>{b.customer?.phone_number || '—'}</span>
-                                                </div>
+                                                {isBlocked ? (
+                                                    <div>
+                                                        <div className="font-semibold text-amber-300 flex items-center gap-1.5">
+                                                            <Lock size={11} className="text-amber-400 shrink-0" />
+                                                            <span>{b.customer_notes || 'Facility Lockout'}</span>
+                                                        </div>
+                                                        <div className="text-[10px] text-zinc-400">
+                                                            Staff: {b.customer?.full_name || 'Admin'}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="font-semibold text-white">
+                                                            {b.customer?.full_name || b.customer_notes || 'Counter Guest'}
+                                                        </div>
+                                                        <div className="text-[11px] text-zinc-400 flex items-center gap-1">
+                                                            <Phone size={10} />
+                                                            <span>{b.customer?.phone_number || '—'}</span>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </td>
 
                                             {/* Court */}
@@ -828,64 +878,97 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
 
                                             {/* Financials */}
                                             <td className="py-4 px-4">
-                                                <div className={`font-black ${isCancelled ? 'text-zinc-500 line-through' : 'text-white'}`}>
-                                                    ৳{Number(b.total_amount).toLocaleString()}
-                                                </div>
-                                                <div className="text-[10px]">
-                                                    {isCancelled ? (
-                                                        Number(b.deposit_paid) > 0 ? (
-                                                            <span className="text-zinc-500 font-medium">
-                                                                Void (Paid: ৳{Number(b.deposit_paid).toLocaleString()})
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-zinc-500 font-medium">Void • No Due</span>
-                                                        )
-                                                    ) : hasBalanceDue ? (
-                                                        <span className="text-amber-400 font-bold">
-                                                            Due: ৳{Number(b.remaining_balance).toLocaleString()}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-emerald-400 font-semibold">Settled</span>
-                                                    )}
-                                                </div>
+                                                {isBlocked ? (
+                                                    <div>
+                                                        <div className="font-black text-zinc-400">৳0</div>
+                                                        <div className="text-[10px] text-amber-400/90 font-semibold">
+                                                            Internal Hold
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className={`font-black ${isCancelled ? 'text-zinc-500 line-through' : 'text-white'}`}>
+                                                            ৳{Number(b.total_amount).toLocaleString()}
+                                                        </div>
+                                                        <div className="text-[10px]">
+                                                            {isCancelled ? (
+                                                                Number(b.deposit_paid) > 0 ? (
+                                                                    <span className="text-zinc-500 font-medium">
+                                                                        Void (Paid: ৳{Number(b.deposit_paid).toLocaleString()})
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-zinc-500 font-medium">Void • No Due</span>
+                                                                )
+                                                            ) : hasBalanceDue ? (
+                                                                <span className="text-amber-400 font-bold">
+                                                                    Due: ৳{Number(b.remaining_balance).toLocaleString()}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-emerald-400 font-semibold">Settled</span>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </td>
 
                                             {/* Status & Actions */}
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-2">
-                                                    <select
-                                                        value={b.status}
-                                                        onChange={(e) => handleUpdateStatus(b.id, e.target.value)}
-                                                        className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border outline-none cursor-pointer ${
-                                                            isConfirmed
-                                                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                                                                : isPending
-                                                                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-                                                                    : isCancelled
-                                                                        ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                                                                        : 'bg-zinc-800 border-zinc-700 text-zinc-300'
-                                                        }`}
-                                                    >
-                                                        <option value="confirmed">Confirmed</option>
-                                                        <option value="pending">Pending</option>
-                                                        <option value="completed">Completed</option>
-                                                        <option value="no_show">No Show</option>
-                                                        <option value="cancelled">Cancelled</option>
-                                                    </select>
+                                                    {isBlocked ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border bg-amber-500/15 border-amber-500/30 text-amber-400">
+                                                                Blocked
+                                                            </span>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setUnblockError(null);
+                                                                    setUnblockModalBooking(b);
+                                                                }}
+                                                                className="inline-flex items-center gap-1.5 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-[11px] px-2.5 py-1 rounded-lg border border-rose-500/40 hover:border-transparent transition-all cursor-pointer shadow-sm"
+                                                                title="Release hold and make pitch available for booking"
+                                                            >
+                                                                <Unlock size={12} />
+                                                                <span>Unblock</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <select
+                                                                value={b.status}
+                                                                onChange={(e) => handleUpdateStatus(b.id, e.target.value)}
+                                                                className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border outline-none cursor-pointer ${
+                                                                    isConfirmed
+                                                                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                                                                        : isPending
+                                                                            ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                                                                            : isCancelled
+                                                                                ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                                                                                : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                                                                }`}
+                                                            >
+                                                                <option value="confirmed">Confirmed</option>
+                                                                <option value="pending">Pending</option>
+                                                                <option value="completed">Completed</option>
+                                                                <option value="blocked">Blocked</option>
+                                                                <option value="no_show">No Show</option>
+                                                                <option value="cancelled">Cancelled</option>
+                                                            </select>
 
-                                                    {hasBalanceDue && !isCancelled && !isBlocked && (
-                                                        <button
-                                                            onClick={() => {
-                                                                setPaymentModalBooking(b);
-                                                                setPayAmount(Number(b.remaining_balance));
-                                                                setPayError(null);
-                                                            }}
-                                                            className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                                                            title="Record Counter Payment"
-                                                        >
-                                                            <Banknote size={12} />
-                                                            <span>Collect</span>
-                                                        </button>
+                                                            {hasBalanceDue && !isCancelled && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setPaymentModalBooking(b);
+                                                                        setPayAmount(Number(b.remaining_balance));
+                                                                        setPayError(null);
+                                                                    }}
+                                                                    className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                                                    title="Record Counter Payment"
+                                                                >
+                                                                    <Banknote size={12} />
+                                                                    <span>Collect</span>
+                                                                </button>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </td>
@@ -1322,6 +1405,93 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 4: Unblock / Release Court Hold Modal */}
+            {unblockModalBooking && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md p-6 sm:p-7 shadow-2xl relative">
+                        <button
+                            onClick={() => {
+                                setUnblockModalBooking(null);
+                                setUnblockError(null);
+                            }}
+                            className="absolute right-4 top-4 w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                            <X size={16} />
+                        </button>
+
+                        <div className="flex items-center gap-2.5 text-rose-400 text-xs font-bold uppercase tracking-wider mb-2">
+                            <Unlock size={15} /> <span>Release Facility Hold</span>
+                        </div>
+                        <h3 className="text-xl font-black text-white mb-2">
+                            Unblock Pitch Window
+                        </h3>
+                        <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
+                            Are you sure you want to release this maintenance hold? This slot will immediately become open and available for player bookings online and at the counter.
+                        </p>
+
+                        {unblockError && (
+                            <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-200 text-xs mb-4">
+                                {unblockError}
+                            </div>
+                        )}
+
+                        {/* Pitch & Slot Summary Card */}
+                        <div className="bg-zinc-950/70 border border-zinc-800/80 rounded-2xl p-4 mb-5 space-y-2.5 text-xs">
+                            <div className="flex items-center justify-between">
+                                <span className="text-zinc-500 font-medium">Pitch / Court</span>
+                                <span className="text-white font-bold">{unblockModalBooking.court?.name || 'Turf Pitch'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-zinc-500 font-medium">Date</span>
+                                <span className="text-white font-bold">
+                                    {new Date(unblockModalBooking.start_datetime).toLocaleDateString('en-GB', {
+                                        weekday: 'short',
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric',
+                                    })}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-zinc-500 font-medium">Time Window</span>
+                                <span className="text-emerald-400 font-mono font-bold">
+                                    {formatTime(unblockModalBooking.start_datetime)} - {formatTime(unblockModalBooking.end_datetime)}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                                <span className="text-zinc-500 font-medium">Lockout Reason</span>
+                                <span className="text-amber-300 font-medium">
+                                    {unblockModalBooking.customer_notes || 'Internal maintenance'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={handleConfirmUnblock}
+                                disabled={isSubmittingUnblock}
+                                className="flex-1 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-bold py-3 rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-rose-950/40"
+                            >
+                                <Unlock size={14} />
+                                <span>{isSubmittingUnblock ? 'Releasing...' : 'Release & Unblock'}</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setUnblockModalBooking(null);
+                                    setUnblockError(null);
+                                }}
+                                disabled={isSubmittingUnblock}
+                                className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 rounded-xl transition-colors cursor-pointer text-center"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -221,3 +221,22 @@ def update_booking_status(
         current_user=current_user,
         status_in=status_in,
     )
+
+
+@router.delete(
+    "/bookings/{booking_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete / release a blocked pitch hold or draft booking (Staff/Admin)",
+)
+def delete_booking(
+    booking_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_staff_or_admin),
+) -> None:
+    """Delete a court block or hold to release pitch availability."""
+    booking_service.delete_court_block(
+        session=session,
+        booking_id=booking_id,
+        current_user=current_user,
+    )
+

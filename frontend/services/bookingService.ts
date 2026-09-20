@@ -99,4 +99,9 @@ export const bookingService = {
         });
         return res.data;
     },
+
+    // 11. Staff/Admin: Delete / release a blocked pitch hold or draft booking
+    async deleteBooking(bookingId: string): Promise<void> {
+        await apiClient.delete(`/api/v1/bookings/${bookingId}`);
+    },
 };

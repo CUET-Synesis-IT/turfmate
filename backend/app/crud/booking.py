@@ -165,3 +165,10 @@ def update_booking(
     session.commit()
     session.refresh(booking)
     return booking
+
+
+def delete_booking(session: Session, booking: Booking) -> None:
+    """Delete a booking record from database."""
+    session.delete(booking)
+    session.commit()
+
