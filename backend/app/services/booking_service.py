@@ -6,8 +6,10 @@ from typing import Optional
 import uuid
 from fastapi import HTTPException, status
 from sqlmodel import Session
+from app.core.config import VENUE_TIMEZONE
 from app.crud import booking as booking_crud
 from app.crud import court as court_crud
+
 from app.crud import user as user_crud
 from app.crud import venue as venue_crud
 from app.models.base import utc_now
@@ -35,6 +37,12 @@ def _ensure_tz_aware(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def is_venue_24_hours(venue: Venue) -> bool:
+    """Return True if venue operates 24/7 (opening_time equals closing_time)."""
+    return venue.opening_time == venue.closing_time
+
 
 
 def generate_booking_reference(session: Session, target_date: date) -> str:
@@ -94,15 +102,19 @@ def get_court_availability(
             detail="Venue not found or inactive",
         )
 
-    # Determine venue operating window
+    # Determine venue operating window in venue local timezone (UTC+6) and convert to UTC
     open_time = venue.opening_time
     close_time = venue.closing_time
 
-    day_open_dt = datetime.combine(target_date, open_time).replace(tzinfo=timezone.utc)
+    day_open_local = datetime.combine(target_date, open_time).replace(tzinfo=VENUE_TIMEZONE)
     if close_time == time(0, 0) or close_time <= open_time:
-        day_close_dt = datetime.combine(target_date + timedelta(days=1), close_time).replace(tzinfo=timezone.utc)
+        day_close_local = datetime.combine(target_date + timedelta(days=1), close_time).replace(tzinfo=VENUE_TIMEZONE)
     else:
-        day_close_dt = datetime.combine(target_date, close_time).replace(tzinfo=timezone.utc)
+        day_close_local = datetime.combine(target_date, close_time).replace(tzinfo=VENUE_TIMEZONE)
+
+    day_open_dt = day_open_local.astimezone(timezone.utc)
+    day_close_dt = day_close_local.astimezone(timezone.utc)
+
 
     # Facility maintenance checks
     venue_in_maintenance = venue.status != FacilityStatus.ACTIVE
@@ -239,22 +251,31 @@ def _validate_booking_window(
     # Check venue operating hours
     open_time = venue.opening_time
     close_time = venue.closing_time
-    slot_date = start_dt.date()
 
-    day_open_dt = datetime.combine(slot_date, open_time).replace(tzinfo=timezone.utc)
+    # 24/7 venues (e.g. 00:00:00 to 00:00:00) operate continuously around the clock
+    if is_venue_24_hours(venue):
+        return
+
+    # For non-24h venues, evaluate start and end in venue local timezone (UTC+6)
+    start_local = start_dt.astimezone(VENUE_TIMEZONE)
+    end_local = end_dt.astimezone(VENUE_TIMEZONE)
+    slot_date = start_local.date()
+
+    day_open_local = datetime.combine(slot_date, open_time).replace(tzinfo=VENUE_TIMEZONE)
     if close_time == time(0, 0) or close_time <= open_time:
-        day_close_dt = datetime.combine(slot_date + timedelta(days=1), close_time).replace(tzinfo=timezone.utc)
+        day_close_local = datetime.combine(slot_date + timedelta(days=1), close_time).replace(tzinfo=VENUE_TIMEZONE)
     else:
-        day_close_dt = datetime.combine(slot_date, close_time).replace(tzinfo=timezone.utc)
+        day_close_local = datetime.combine(slot_date, close_time).replace(tzinfo=VENUE_TIMEZONE)
 
-    if start_dt < day_open_dt or end_dt > day_close_dt:
+    if start_local < day_open_local or end_local > day_close_local:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Booking time ({start_dt.strftime('%H:%M')} - {end_dt.strftime('%H:%M')}) "
-                f"is outside venue operating hours ({open_time.strftime('%H:%M')} - {close_time.strftime('%H:%M')})"
+                f"Booking time ({start_local.strftime('%I:%M %p')} - {end_local.strftime('%I:%M %p')}) "
+                f"is outside venue operating hours ({open_time.strftime('%I:%M %p')} - {close_time.strftime('%I:%M %p')})"
             ),
         )
+
 
 
 def build_booking_response(session: Session, booking: Booking) -> BookingResponse:

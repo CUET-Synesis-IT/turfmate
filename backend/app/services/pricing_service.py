@@ -4,11 +4,13 @@ from typing import Optional
 import uuid
 from fastapi import HTTPException, status
 from sqlmodel import Session
+from app.core.config import VENUE_TIMEZONE
 from app.crud import court as court_crud
 from app.crud import pricing_rule as pricing_crud
 from app.models.pricing_rules import PricingRule
 from app.models.user import User, UserRole
 from app.schemas.pricing import PricingRuleCreate, PricingRuleUpdate
+
 
 
 def _ensure_role(actor: User, allowed_roles: list[UserRole]) -> None:
@@ -132,8 +134,10 @@ def calculate_slot_price(
         )
 
     rules = pricing_crud.list_court_pricing_rules(session, court_id, is_active=True)
-    day_of_week = slot_time.weekday()  # 0=Monday, 4=Friday, 6=Sunday
-    t = slot_time.time()
+    slot_local = slot_time.astimezone(VENUE_TIMEZONE) if slot_time.tzinfo else slot_time
+    day_of_week = slot_local.weekday()  # 0=Monday, 4=Friday, 6=Sunday
+    t = slot_local.time()
+
 
     def _matches_rule_time(rule: PricingRule, check_time: time) -> bool:
         if rule.end_time == time(0, 0):

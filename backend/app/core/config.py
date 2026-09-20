@@ -1,7 +1,9 @@
+from datetime import timedelta, timezone
 from functools import lru_cache
 from typing import Annotated, Any
 from pydantic import BeforeValidator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 
 def parse_cors(v: Any) -> list[str] | str:
@@ -58,6 +60,9 @@ class Settings(BaseSettings):
     def POSTGRES_DATABASE_URL(self) -> str:
         return self.DATABASE_URL
 
+    # Venue Operating Timezone (Bangladesh Standard Time: UTC+6)
+    VENUE_TIMEZONE_OFFSET_HOURS: int = 6
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -72,3 +77,6 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+VENUE_TIMEZONE = timezone(timedelta(hours=settings.VENUE_TIMEZONE_OFFSET_HOURS))
+

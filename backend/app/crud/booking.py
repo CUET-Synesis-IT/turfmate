@@ -2,10 +2,13 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 import uuid
 from sqlmodel import Session, col, func, select
+from app.core.config import VENUE_TIMEZONE
+
 from app.models.base import utc_now
 from app.models.booking import Booking, BookingStatus
 from app.models.court import Court
 from app.models.user import User
+
 
 
 def expire_stale_pending_bookings(session: Session, hold_minutes: int = 10) -> int:
@@ -69,9 +72,12 @@ def get_court_bookings_for_date(
     target_date: date,
 ) -> list[Booking]:
     """Get all non-cancelled bookings for a court on a given date."""
-    # Window spans the target date from 00:00:00 to next day 00:00:00 UTC
-    day_start = datetime.combine(target_date, time.min).replace(tzinfo=timezone.utc)
-    day_end = datetime.combine(target_date + timedelta(days=1), time.min).replace(tzinfo=timezone.utc)
+    # Window spans the target date in venue timezone (UTC+6) converted to UTC
+    day_start_local = datetime.combine(target_date, time.min).replace(tzinfo=VENUE_TIMEZONE)
+    day_end_local = datetime.combine(target_date + timedelta(days=1), time.min).replace(tzinfo=VENUE_TIMEZONE)
+    day_start = day_start_local.astimezone(timezone.utc)
+    day_end = day_end_local.astimezone(timezone.utc)
+
 
     statement = select(Booking).where(
         Booking.court_id == court_id,
@@ -119,12 +125,13 @@ def list_bookings(
         query = query.where(Booking.status == status)
 
     if start_date is not None:
-        start_dt = datetime.combine(start_date, time.min).replace(tzinfo=timezone.utc)
+        start_dt = datetime.combine(start_date, time.min).replace(tzinfo=VENUE_TIMEZONE).astimezone(timezone.utc)
         query = query.where(Booking.end_datetime >= start_dt)
 
     if end_date is not None:
-        end_dt = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=timezone.utc)
+        end_dt = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=VENUE_TIMEZONE).astimezone(timezone.utc)
         query = query.where(Booking.start_datetime < end_dt)
+
 
     if search:
         search_pattern = f"%{search.strip()}%"

@@ -73,7 +73,8 @@ export interface SlotInfo {
     is_available: boolean;
     status: 'available' | 'booked' | 'pending' | 'blocked' | 'maintenance';
     reason?: string | null;
-    period?: 'morning' | 'afternoon' | 'prime_night';
+    period?: 'morning' | 'afternoon' | 'evening' | 'overnight' | 'prime_night';
+
 }
 
 export interface CourtAvailabilityResponse {

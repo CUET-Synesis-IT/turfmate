@@ -117,18 +117,38 @@ export default function BookingHoldPaymentModal({
         try {
             const start = new Date(booking.start_datetime);
             const end = new Date(booking.end_datetime);
-            const dateStr = start.toLocaleDateString('en-GB', {
+            const startDateStr = start.toLocaleDateString('en-GB', {
                 weekday: 'short',
                 day: 'numeric',
                 month: 'short',
-                year: 'numeric',
             });
             const startTimeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
             const endTimeStr = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
             const diffHours = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60));
-            return { dateStr, timeStr: `${startTimeStr} - ${endTimeStr}`, duration: `${diffHours} hr${diffHours > 1 ? 's' : ''}` };
+
+            const isCrossMidnight = start.toDateString() !== end.toDateString();
+            const endDateStr = end.toLocaleDateString('en-GB', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+            });
+
+            const dateStr = isCrossMidnight
+                ? `${startDateStr} → ${endDateStr}`
+                : start.toLocaleDateString('en-GB', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                });
+
+            const timeStr = isCrossMidnight
+                ? `${startTimeStr} (${startDateStr}) → ${endTimeStr} (${endDateStr})`
+                : `${startTimeStr} - ${endTimeStr}`;
+
+            return { dateStr, timeStr, duration: `${diffHours} hr${diffHours > 1 ? 's' : ''}`, isCrossMidnight };
         } catch {
-            return { dateStr: '', timeStr: '', duration: '' };
+            return { dateStr: '', timeStr: '', duration: '', isCrossMidnight: false };
         }
     };
 
@@ -236,7 +256,14 @@ export default function BookingHoldPaymentModal({
                     <div className="flex items-center justify-between">
                         <span className="text-zinc-400">Kickoff Date & Time</span>
                         <span className="font-semibold text-zinc-200 text-right">
-                            {kickoff.dateStr}
+                            <span className="flex items-center justify-end gap-1.5">
+                                {kickoff.dateStr}
+                                {kickoff.isCrossMidnight && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        Overnight
+                                    </span>
+                                )}
+                            </span>
                             <span className="block text-[11px] text-emerald-400 font-mono font-bold">
                                 {kickoff.timeStr} ({kickoff.duration})
                             </span>
