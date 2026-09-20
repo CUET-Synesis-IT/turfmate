@@ -26,6 +26,8 @@ import {
     Sparkles,
     AlertTriangle,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Filter
 } from 'lucide-react';
 
@@ -241,6 +243,27 @@ export default function DashboardPage() {
             return true;
         });
     }, [bookings, timeFilter, statusFilter, searchQuery, nowTimestamp]);
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const pageSize = 6;
+
+    // Reset to page 1 whenever any filter or search changes (derived during render)
+    const [prevFilterKey, setPrevFilterKey] = useState<string>('');
+    const currentFilterKey = `${timeFilter}_${statusFilter}_${searchQuery}`;
+
+    if (prevFilterKey !== currentFilterKey) {
+        setPrevFilterKey(currentFilterKey);
+        setCurrentPage(1);
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+
+    const paginatedBookings = useMemo(() => {
+        const start = (safeCurrentPage - 1) * pageSize;
+        return filteredBookings.slice(start, start + pageSize);
+    }, [filteredBookings, safeCurrentPage, pageSize]);
 
     // Date/Time formatting helpers in client local timezone
     const formatTime = (isoString?: string) => {
@@ -507,9 +530,10 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 ) : (
-                    /* Booking Cards Grid */
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        {filteredBookings.map((b) => {
+                    <>
+                        {/* Booking Cards Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {paginatedBookings.map((b) => {
                             const isConfirmed = b.status === 'confirmed';
                             const isPending = b.status === 'pending';
                             const isCancelled = b.status === 'cancelled';
@@ -671,7 +695,56 @@ export default function DashboardPage() {
                             );
                         })}
                     </div>
-                )}
+
+                    {/* Pagination Bar */}
+                    {totalPages > 1 && (
+                        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl text-xs text-zinc-400">
+                            <div>
+                                Showing <span className="font-bold text-white">{(safeCurrentPage - 1) * pageSize + 1}</span>–<span className="font-bold text-white">{Math.min(safeCurrentPage * pageSize, filteredBookings.length)}</span> of <span className="font-bold text-white">{filteredBookings.length}</span> matches
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                    disabled={safeCurrentPage === 1}
+                                    className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                    title="Previous page"
+                                >
+                                    <ChevronLeft size={14} />
+                                </button>
+
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                                        <button
+                                            key={pageNum}
+                                            type="button"
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                                safeCurrentPage === pageNum
+                                                    ? 'bg-emerald-500 text-zinc-950 shadow-sm'
+                                                    : 'bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                                            }`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                    disabled={safeCurrentPage === totalPages}
+                                    className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                    title="Next page"
+                                >
+                                    <ChevronRight size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
             </div>
 
             {/* MODAL 1: Digital Match Pass Ticket Modal */}

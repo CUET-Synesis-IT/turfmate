@@ -17,6 +17,8 @@ import {
     CheckCircle2,
     Clock,
     AlertCircle,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 
 interface BookingsDeskProps {
@@ -59,6 +61,10 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
     const [startDate, setStartDate] = useState<string>(() => getMonthStart());
     const [endDate, setEndDate] = useState<string>(() => getMonthEnd());
     const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>('month');
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(10);
 
     // Modals
     const [showWalkinModal, setShowWalkinModal] = useState<boolean>(false);
@@ -231,6 +237,24 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
             totalBookings: filteredBookings.length,
         };
     }, [filteredBookings]);
+
+    // Reset to page 1 whenever any filter or search changes (derived during render)
+    const [prevFilterKey, setPrevFilterKey] = useState<string>('');
+    const currentFilterKey = `${selectedVenueId}_${selectedCourtId}_${statusFilter}_${searchQuery}_${startDate}_${endDate}`;
+
+    if (prevFilterKey !== currentFilterKey) {
+        setPrevFilterKey(currentFilterKey);
+        setCurrentPage(1);
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+
+    // Paginated slice of filtered bookings
+    const paginatedBookings = useMemo(() => {
+        const start = (safeCurrentPage - 1) * pageSize;
+        return filteredBookings.slice(start, start + pageSize);
+    }, [filteredBookings, safeCurrentPage, pageSize]);
 
     // Walk-in booking submit
     const handleCreateWalkin = async (e: React.FormEvent) => {
@@ -751,7 +775,7 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-800/60">
-                                {filteredBookings.map((b) => {
+                                {paginatedBookings.map((b) => {
                                     const isConfirmed = b.status === 'confirmed';
                                     const isPending = b.status === 'pending';
                                     const isCancelled = b.status === 'cancelled';
@@ -870,6 +894,95 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                                 })}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Pagination Bar */}
+                    <div className="px-5 py-3.5 bg-zinc-900/90 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3 text-zinc-400">
+                            <span>
+                                Showing{' '}
+                                <span className="font-bold text-white">
+                                    {filteredBookings.length === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1}
+                                </span>
+                                –
+                                <span className="font-bold text-white">
+                                    {Math.min(safeCurrentPage * pageSize, filteredBookings.length)}
+                                </span>{' '}
+                                of <span className="font-bold text-white">{filteredBookings.length}</span> bookings
+                            </span>
+
+                            <div className="flex items-center gap-1.5 pl-3 border-l border-zinc-800">
+                                <span className="text-[11px] text-zinc-500">Per page:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => {
+                                        setPageSize(Number(e.target.value));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-emerald-500 cursor-pointer"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                    disabled={safeCurrentPage === 1}
+                                    className="p-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                    title="Previous Page"
+                                >
+                                    <ChevronLeft size={14} />
+                                </button>
+
+                                <div className="flex items-center gap-1 px-1">
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                                        .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                                            if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                                                acc.push('...');
+                                            }
+                                            acc.push(p);
+                                            return acc;
+                                        }, [])
+                                        .map((pageNum, idx) =>
+                                            pageNum === '...' ? (
+                                                <span key={`dots-${idx}`} className="px-1 text-zinc-600 text-xs">
+                                                    …
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    key={pageNum}
+                                                    type="button"
+                                                    onClick={() => setCurrentPage(Number(pageNum))}
+                                                    className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                        safeCurrentPage === pageNum
+                                                            ? 'bg-emerald-500 text-zinc-950 shadow-sm'
+                                                            : 'bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                                                    }`}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            )
+                                        )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                    disabled={safeCurrentPage === totalPages}
+                                    className="p-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                    title="Next Page"
+                                >
+                                    <ChevronRight size={14} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

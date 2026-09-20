@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 import uuid
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlmodel import Session
 from app.api.deps import get_current_user, get_session, require_staff_or_admin
 from app.crud import booking as booking_crud
@@ -104,6 +104,7 @@ def create_court_block(
     summary="List bookings with filtering",
 )
 def list_bookings(
+    response: Response,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     court_id: Optional[uuid.UUID] = Query(None, description="Filter by court ID"),
@@ -120,7 +121,7 @@ def list_bookings(
     is_staff = current_user.role in [UserRole.STAFF, UserRole.ADMIN]
     query_customer_id = customer_id if is_staff else current_user.id
 
-    bookings, _ = booking_crud.list_bookings(
+    bookings, total_count = booking_crud.list_bookings(
         session=session,
         customer_id=query_customer_id,
         court_id=court_id,
@@ -132,6 +133,7 @@ def list_bookings(
         skip=skip,
         limit=limit,
     )
+    response.headers["X-Total-Count"] = str(total_count)
     return [booking_service.build_booking_response(session, b) for b in bookings]
 
 
