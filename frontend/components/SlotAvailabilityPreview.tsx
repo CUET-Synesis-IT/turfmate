@@ -919,16 +919,15 @@ export default function SlotAvailabilityPreview({
                                         if (onCourtSelect) onCourtSelect(e.target.value);
                                         setSelectedSlots([]);
                                     }}
-                                    className="w-full appearance-none bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2.5 pr-10 text-xs sm:text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer transition-all"
+                                    className="w-full appearance-none bg-zinc-100 dark:bg-zinc-800 text-gray-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 pr-10 text-xs sm:text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer transition-all"
                                 >
                                     {courts.map((court) => (
-                                        <option key={court.id} value={court.id} className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                        <option key={court.id} value={court.id} className="bg-white dark:bg-zinc-800 text-gray-900 dark:text-white font-medium py-1">
                                             {court.name}
                                         </option>
                                     ))}
-
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-500 dark:text-zinc-400">
                                     <ChevronDown size={16} />
                                 </div>
                             </div>
@@ -944,28 +943,29 @@ export default function SlotAvailabilityPreview({
                                     id="time-window-dropdown-select"
                                     value={activePeriod}
                                     onChange={(e) => setActivePeriod(e.target.value as typeof activePeriod)}
-                                    className="w-full appearance-none bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2.5 pr-10 text-xs sm:text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer transition-all"
+                                    className="w-full appearance-none bg-zinc-100 dark:bg-zinc-800 text-gray-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 pr-10 text-xs sm:text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer transition-all"
                                 >
-                                    <option value="all" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                    <option value="all" className="bg-white dark:bg-zinc-800 text-gray-900 dark:text-white font-medium py-1">
                                         All Hours (24h)
                                     </option>
-                                    <option value="overnight" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                    <option value="overnight" className="bg-white dark:bg-zinc-800 text-gray-900 dark:text-white font-medium py-1">
                                         Late Night (00:00 - 06:00)
                                     </option>
-                                    <option value="morning" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                    <option value="morning" className="bg-white dark:bg-zinc-800 text-gray-900 dark:text-white font-medium py-1">
                                         Morning (06:00 - 12:00)
                                     </option>
-                                    <option value="afternoon" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                    <option value="afternoon" className="bg-white dark:bg-zinc-800 text-gray-900 dark:text-white font-medium py-1">
                                         Afternoon (12:00 - 17:00)
                                     </option>
-                                    <option value="evening" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                    <option value="evening" className="bg-white dark:bg-zinc-800 text-gray-900 dark:text-white font-medium py-1">
                                         Evening (17:00 - 24:00)
                                     </option>
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-500 dark:text-zinc-400">
                                     <ChevronDown size={16} />
                                 </div>
                             </div>
+
                         </div>
                     </div>
 
