@@ -42,6 +42,7 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
     const [walkinCourtId, setWalkinCourtId] = useState<string>('');
     const [walkinDate, setWalkinDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [walkinStartHour, setWalkinStartHour] = useState<string>('18:00');
+    const [walkinEndHour, setWalkinEndHour] = useState<string>('19:00');
     const [walkinName, setWalkinName] = useState<string>('');
     const [walkinPhone, setWalkinPhone] = useState<string>('');
     const [walkinDeposit, setWalkinDeposit] = useState<number>(1200);
@@ -134,12 +135,26 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
         e.preventDefault();
         setWalkinError(null);
 
-        const [hours, minutes] = walkinStartHour.split(':').map(Number);
-        const startDate = new Date(`${walkinDate}T00:00:00`);
-        startDate.setHours(hours, minutes, 0, 0);
+        const [startH, startM] = walkinStartHour.split(':').map(Number);
+        const [endH, endM] = walkinEndHour.split(':').map(Number);
 
-        const endDate = new Date(startDate);
-        endDate.setHours(startDate.getHours() + 1);
+        const startDate = new Date(`${walkinDate}T00:00:00`);
+        startDate.setHours(startH, startM, 0, 0);
+
+        let endDate = new Date(`${walkinDate}T00:00:00`);
+        endDate.setHours(endH, endM, 0, 0);
+
+        // Handle overnight kickoff (e.g. 23:00 to 01:00 or 00:00)
+        if (endDate <= startDate) {
+            if (endH < startH || (endH === 0 && startH > 0)) {
+                endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 1);
+                endDate.setHours(endH, endM, 0, 0);
+            } else {
+                setWalkinError('End time must be later than start time.');
+                return;
+            }
+        }
 
         setIsSubmittingWalkin(true);
         try {
@@ -600,23 +615,42 @@ export default function BookingsDesk({ venues, courts }: BookingsDeskProps) {
                                 </select>
                             </div>
 
+                            <div>
+                                <label className="block font-bold text-zinc-300 mb-1">Date</label>
+                                <input
+                                    type="date"
+                                    value={walkinDate}
+                                    onChange={(e) => setWalkinDate(e.target.value)}
+                                    className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2.5 outline-none"
+                                    required
+                                />
+                            </div>
+
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block font-bold text-zinc-300 mb-1">Date</label>
-                                    <input
-                                        type="date"
-                                        value={walkinDate}
-                                        onChange={(e) => setWalkinDate(e.target.value)}
-                                        className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2.5 outline-none"
-                                        required
-                                    />
-                                </div>
                                 <div>
                                     <label className="block font-bold text-zinc-300 mb-1">Start Hour (24h)</label>
                                     <input
                                         type="time"
                                         value={walkinStartHour}
-                                        onChange={(e) => setWalkinStartHour(e.target.value)}
+                                        onChange={(e) => {
+                                            const newStart = e.target.value;
+                                            setWalkinStartHour(newStart);
+                                            const [sH, sM] = newStart.split(':').map(Number);
+                                            if (!isNaN(sH) && !isNaN(sM)) {
+                                                const nextH = (sH + 1) % 24;
+                                                setWalkinEndHour(`${String(nextH).padStart(2, '0')}:${String(sM).padStart(2, '0')}`);
+                                            }
+                                        }}
+                                        className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2.5 outline-none"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-zinc-300 mb-1">End Hour (24h)</label>
+                                    <input
+                                        type="time"
+                                        value={walkinEndHour}
+                                        onChange={(e) => setWalkinEndHour(e.target.value)}
                                         className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-3 py-2.5 outline-none"
                                         required
                                     />
