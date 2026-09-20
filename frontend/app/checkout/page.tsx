@@ -84,17 +84,29 @@ function CheckoutContent() {
                     return;
                 }
 
-                // Calculate seconds remaining
+                // Calculate seconds remaining (continuous 10-minute hold window)
+                let holdEndTime: number;
                 if (res.expires_at) {
-                    const expireTime = new Date(res.expires_at).getTime();
-                    const diff = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
-                    setSecondsRemaining(diff);
+                    holdEndTime = new Date(res.expires_at).getTime();
                 } else if (res.created_at) {
-                    const createdTime = new Date(res.created_at).getTime();
-                    const expireTime = createdTime + TOTAL_HOLD_SECONDS * 1000;
-                    const diff = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
-                    setSecondsRemaining(diff);
+                    holdEndTime = new Date(res.created_at).getTime() + TOTAL_HOLD_SECONDS * 1000;
+                } else {
+                    holdEndTime = Date.now() + TOTAL_HOLD_SECONDS * 1000;
                 }
+
+                // If user initiated booking from guest slot selection intent, cap holdEndTime from original selection
+                let intentAtStr = searchParams.get('intent_at');
+                if (!intentAtStr && typeof window !== 'undefined') {
+                    intentAtStr = sessionStorage.getItem('turfmate_intent_at');
+                }
+                const intentAt = intentAtStr ? Number(intentAtStr) : null;
+                if (intentAt && !isNaN(intentAt) && intentAt > 0) {
+                    const intentEndTime = intentAt + TOTAL_HOLD_SECONDS * 1000;
+                    holdEndTime = Math.min(holdEndTime, intentEndTime);
+                }
+
+                const diff = Math.max(0, Math.floor((holdEndTime - Date.now()) / 1000));
+                setSecondsRemaining(diff);
             })
             .catch((err) => {
                 if (!isMounted) return;
@@ -122,6 +134,7 @@ function CheckoutContent() {
                         .catch(() => {});
                     if (typeof window !== 'undefined') {
                         sessionStorage.removeItem('turfmate_active_hold');
+                        sessionStorage.removeItem('turfmate_intent_at');
                     }
                     setError('Your 10-minute slot hold has expired. The slots have been released for other teams.');
                     return 0;
@@ -171,6 +184,7 @@ function CheckoutContent() {
             if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('turfmate_active_hold');
                 sessionStorage.removeItem('turfmate_pending_booking');
+                sessionStorage.removeItem('turfmate_intent_at');
             }
             router.push('/#availability-section');
         } catch (err) {

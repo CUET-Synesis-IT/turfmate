@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +19,7 @@ import {
     Loader2,
     ShieldCheck,
     ArrowRight,
-    Sparkles,
+    Clock,
 } from 'lucide-react';
 import { authService } from '@/services/authService';
 import { bookingService } from '@/services/bookingService';
@@ -108,6 +108,104 @@ interface PendingBookingIntent {
     timestamp: number;
 }
 
+const TOTAL_HOLD_SECONDS = 10 * 60; // 10 minutes
+
+function isIntentExpired(timestamp?: number): boolean {
+    if (!timestamp) return true;
+    return Date.now() - timestamp >= TOTAL_HOLD_SECONDS * 1000;
+}
+
+function calculateSecondsRemaining(timestamp?: number): number {
+    if (!timestamp) return 0;
+    const elapsed = Math.floor((Date.now() - timestamp) / 1000);
+    return Math.max(0, TOTAL_HOLD_SECONDS - elapsed);
+}
+
+function getInitialPendingIntent(): PendingBookingIntent | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = sessionStorage.getItem('turfmate_pending_booking');
+        if (raw) {
+            const parsed = JSON.parse(raw) as PendingBookingIntent;
+            if (parsed && parsed.court_id && parsed.start_datetime && parsed.end_datetime) {
+                if (!isIntentExpired(parsed.timestamp)) {
+                    return parsed;
+                }
+                sessionStorage.removeItem('turfmate_pending_booking');
+            }
+        }
+    } catch (e) {
+        console.error('Failed to parse pending booking intent:', e);
+    }
+    return null;
+}
+
+interface HoldBannerProps {
+    intent: PendingBookingIntent;
+    secondsRemaining: number;
+    mode: 'login' | 'register';
+}
+
+function HoldBanner({ intent, secondsRemaining, mode }: HoldBannerProps) {
+    const isExpired = secondsRemaining <= 0;
+    const isUrgent = secondsRemaining > 0 && secondsRemaining <= 120;
+    const minutes = Math.floor(secondsRemaining / 60);
+    const seconds = secondsRemaining % 60;
+    const timeFormatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    return (
+        <div className={`mb-4 rounded-2xl p-3.5 shadow-lg border transition-all duration-300 ${
+            isExpired
+                ? 'bg-rose-950/60 border-rose-500/40 text-rose-200 shadow-rose-950/30'
+                : isUrgent
+                ? 'bg-amber-950/60 border-amber-500/40 text-amber-200 shadow-amber-950/30'
+                : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200 shadow-emerald-950/30'
+        }`}>
+            <div className="flex items-start gap-3">
+                <div className={`p-2 rounded-xl shrink-0 mt-0.5 border ${
+                    isExpired
+                        ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                        : isUrgent
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse'
+                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                }`}>
+                    <Clock size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                            isExpired
+                                ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                                : isUrgent
+                                ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                                : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                        }`}>
+                            {isExpired ? 'Hold Window Expired' : '10m Hold Intent Active'}
+                        </span>
+                        {!isExpired && (
+                            <span className={`text-xs font-mono font-black ${isUrgent ? 'text-amber-400 animate-pulse' : 'text-emerald-300'}`}>
+                                ⏱ {timeFormatted}
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs font-bold text-white mt-1 truncate">
+                        {intent.court_name} • {intent.count} Hour{intent.count > 1 ? 's' : ''} (৳{Number(intent.total_price).toLocaleString()})
+                    </p>
+                    <p className="text-[11px] mt-1 text-zinc-300 leading-relaxed">
+                        {isExpired ? (
+                            <Link href="/#availability-section" className="text-rose-400 underline font-semibold hover:text-rose-300">
+                                10-minute window elapsed. Click here to pick a fresh slot from the schedule.
+                            </Link>
+                        ) : (
+                            `${mode === 'login' ? 'Sign in' : 'Register'} within ${timeFormatted} to lock these slots and finish payment.`
+                        )}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -115,25 +213,33 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
     const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
 
     // Pending reservation intent held before login
-    const [pendingIntent] = useState<PendingBookingIntent | null>(() => {
-        if (typeof window === 'undefined') return null;
-        try {
-            const raw = sessionStorage.getItem('turfmate_pending_booking');
-            if (raw) {
-                const parsed = JSON.parse(raw) as PendingBookingIntent;
-                if (parsed && parsed.court_id && parsed.start_datetime && parsed.end_datetime) {
-                    const ageMinutes = (Date.now() - (parsed.timestamp || 0)) / (1000 * 60);
-                    if (ageMinutes < 120) {
-                        return parsed;
-                    }
-                    sessionStorage.removeItem('turfmate_pending_booking');
-                }
-            }
-        } catch (e) {
-            console.error('Failed to parse pending booking intent:', e);
-        }
-        return null;
+    const [pendingIntent] = useState<PendingBookingIntent | null>(getInitialPendingIntent);
+
+    // 1-second live countdown for guest reservation intent
+    const [secondsRemaining, setSecondsRemaining] = useState<number>(() => {
+        return calculateSecondsRemaining(pendingIntent?.timestamp);
     });
+
+    useEffect(() => {
+        if (!pendingIntent || secondsRemaining <= 0) return;
+
+        const interval = setInterval(() => {
+            setSecondsRemaining((prev) => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    if (typeof window !== 'undefined') {
+                        sessionStorage.removeItem('turfmate_pending_booking');
+                    }
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [pendingIntent, secondsRemaining]);
+
+    const isHoldExpired = !pendingIntent || secondsRemaining <= 0;
     const [bookingHoldingMessage, setBookingHoldingMessage] = useState<string | null>(null);
 
     // Login State
@@ -182,7 +288,13 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
             try {
                 const intent = JSON.parse(raw) as PendingBookingIntent;
                 if (intent && intent.court_id && intent.start_datetime && intent.end_datetime) {
-                    setBookingHoldingMessage('Securing your 10-minute slot hold with arena...');
+                    if (isIntentExpired(intent.timestamp)) {
+                        sessionStorage.removeItem('turfmate_pending_booking');
+                        router.push('/?booking_error=expired#availability-section');
+                        return;
+                    }
+
+                    setBookingHoldingMessage('Securing your slot hold with arena...');
                     try {
                         const booking = await bookingService.createBooking({
                             court_id: intent.court_id,
@@ -193,8 +305,9 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
 
                         sessionStorage.removeItem('turfmate_pending_booking');
                         sessionStorage.setItem('turfmate_active_hold', JSON.stringify(booking));
+                        sessionStorage.setItem('turfmate_intent_at', String(intent.timestamp));
 
-                        router.push(`/checkout?booking_id=${booking.id}`);
+                        router.push(`/checkout?booking_id=${booking.id}&intent_at=${intent.timestamp}`);
                         return;
                     } catch (bErr: unknown) {
                         console.error('Failed to create booking after login:', bErr);
@@ -446,27 +559,11 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
 
                             {/* Pending Slot Reservation Waiting Banner */}
                             {pendingIntent && (
-                                <div className="mb-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl p-3.5 shadow-lg shadow-emerald-950/30 flex items-start gap-3 animate-in fade-in duration-200">
-                                    <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0 mt-0.5">
-                                        <Sparkles size={16} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                Slot Held for You
-                                            </span>
-                                            <span className="text-xs font-black text-emerald-300">
-                                                ৳{Number(pendingIntent.total_price).toLocaleString()}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs font-bold text-white mt-1 truncate">
-                                            {pendingIntent.court_name} • {pendingIntent.count} Hour{pendingIntent.count > 1 ? 's' : ''}
-                                        </p>
-                                        <p className="text-[11px] text-zinc-400 mt-1">
-                                            Complete registration to lock this 10-minute hold and proceed directly to payment.
-                                        </p>
-                                    </div>
-                                </div>
+                                <HoldBanner
+                                    intent={pendingIntent}
+                                    secondsRemaining={secondsRemaining}
+                                    mode="register"
+                                />
                             )}
 
                             {/* Form Error Banner */}
@@ -650,7 +747,7 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                                         </>
                                     ) : (
                                         <>
-                                            <span>{pendingIntent ? 'Register & Lock Slots' : 'Register & Book Now'}</span>
+                                            <span>{pendingIntent && !isHoldExpired ? 'Register & Lock Slots' : 'Register & Book Now'}</span>
                                             <ArrowRight size={16} />
                                         </>
                                     )}
@@ -714,27 +811,11 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
 
                             {/* Pending Slot Reservation Waiting Banner */}
                             {pendingIntent && (
-                                <div className="mb-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl p-3.5 shadow-lg shadow-emerald-950/30 flex items-start gap-3 animate-in fade-in duration-200">
-                                    <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0 mt-0.5">
-                                        <Sparkles size={16} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                Slot Held for You
-                                            </span>
-                                            <span className="text-xs font-black text-emerald-300">
-                                                ৳{Number(pendingIntent.total_price).toLocaleString()}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs font-bold text-white mt-1 truncate">
-                                            {pendingIntent.court_name} • {pendingIntent.count} Hour{pendingIntent.count > 1 ? 's' : ''}
-                                        </p>
-                                        <p className="text-[11px] text-zinc-400 mt-1">
-                                            Sign in to lock this 10-minute hold and proceed directly to payment.
-                                        </p>
-                                    </div>
-                                </div>
+                                <HoldBanner
+                                    intent={pendingIntent}
+                                    secondsRemaining={secondsRemaining}
+                                    mode="login"
+                                />
                             )}
 
                             {/* Form Error Banner */}
@@ -826,7 +907,7 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                                         </>
                                     ) : (
                                         <>
-                                            <span>{pendingIntent ? 'Sign In & Lock Slots' : 'Sign In to Pitch Pass'}</span>
+                                            <span>{pendingIntent && !isHoldExpired ? 'Sign In & Lock Slots' : 'Sign In to Pitch Pass'}</span>
                                             <ArrowRight size={16} />
                                         </>
                                     )}

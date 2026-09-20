@@ -265,9 +265,14 @@ export default function SlotAvailabilityPreview({
     const [bookingError, setBookingError] = useState<string | null>(() => {
         if (typeof window === 'undefined') return null;
         const params = new URLSearchParams(window.location.search);
-        return params.get('booking_error') === 'conflict'
-            ? 'The slots you selected were just reserved by another team while logging in. Fresh availability is loaded below.'
-            : null;
+        const err = params.get('booking_error');
+        if (err === 'conflict') {
+            return 'The slots you selected were just reserved by another team while logging in. Fresh availability is loaded below.';
+        }
+        if (err === 'expired') {
+            return 'Your 10-minute slot reservation window expired before signing in. Please select an available slot below.';
+        }
+        return null;
     });
     const [customerNotes, setCustomerNotes] = useState<string>('');
     const [showNotesInput, setShowNotesInput] = useState<boolean>(false);
@@ -280,7 +285,7 @@ export default function SlotAvailabilityPreview({
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const params = new URLSearchParams(window.location.search);
-        if (params.get('booking_error') === 'conflict') {
+        if (params.get('booking_error')) {
             window.history.replaceState({}, '', window.location.pathname + '#availability-section');
         }
     }, []);
