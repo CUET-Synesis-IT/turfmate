@@ -114,7 +114,7 @@ def list_bookings(
     end_date: Optional[date] = Query(None, description="Filter bookings on or before date"),
     search: Optional[str] = Query(None, description="Search reference, phone, or customer name"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=500),
 ) -> list[BookingResponse]:
     """List bookings. Customers only see their own; Staff/Admin can view all and filter."""
     is_staff = current_user.role in [UserRole.STAFF, UserRole.ADMIN]
