@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AxiosError } from 'axios';
@@ -19,8 +19,10 @@ import {
     Loader2,
     ShieldCheck,
     ArrowRight,
+    Sparkles,
 } from 'lucide-react';
 import { authService } from '@/services/authService';
+import { bookingService } from '@/services/bookingService';
 import { useAuthStore } from '@/lib/auth-store';
 import {
     LoginErrorResponse,
@@ -93,15 +95,46 @@ interface AuthCardProps {
     defaultTab?: 'login' | 'register';
 }
 
+interface PendingBookingIntent {
+    court_id: string;
+    court_name: string;
+    venue_name?: string;
+    date: string;
+    start_datetime: string;
+    end_datetime: string;
+    customer_notes?: string;
+    total_price: number;
+    count: number;
+    timestamp: number;
+}
+
 export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { login } = useAuthStore();
     const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
 
-    // Keep internal state in sync if defaultTab prop changes
-    useEffect(() => {
-        // Sync tab on mount or external defaultTab change
-    }, []);
+    // Pending reservation intent held before login
+    const [pendingIntent] = useState<PendingBookingIntent | null>(() => {
+        if (typeof window === 'undefined') return null;
+        try {
+            const raw = sessionStorage.getItem('turfmate_pending_booking');
+            if (raw) {
+                const parsed = JSON.parse(raw) as PendingBookingIntent;
+                if (parsed && parsed.court_id && parsed.start_datetime && parsed.end_datetime) {
+                    const ageMinutes = (Date.now() - (parsed.timestamp || 0)) / (1000 * 60);
+                    if (ageMinutes < 120) {
+                        return parsed;
+                    }
+                    sessionStorage.removeItem('turfmate_pending_booking');
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse pending booking intent:', e);
+        }
+        return null;
+    });
+    const [bookingHoldingMessage, setBookingHoldingMessage] = useState<string | null>(null);
 
     // Login State
     const [isLoginLoading, setIsLoginLoading] = useState(false);
@@ -142,10 +175,62 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
         window.history.replaceState(null, '', target === 'login' ? '/login' : '/register');
     };
 
+    // Post-authentication action: automatically holds selected slots and redirects to payment
+    const handlePostAuthRedirect = async (userRole?: string) => {
+        const raw = typeof window !== 'undefined' ? sessionStorage.getItem('turfmate_pending_booking') : null;
+        if (raw) {
+            try {
+                const intent = JSON.parse(raw) as PendingBookingIntent;
+                if (intent && intent.court_id && intent.start_datetime && intent.end_datetime) {
+                    setBookingHoldingMessage('Securing your 10-minute slot hold with arena...');
+                    try {
+                        const booking = await bookingService.createBooking({
+                            court_id: intent.court_id,
+                            start_datetime: intent.start_datetime,
+                            end_datetime: intent.end_datetime,
+                            customer_notes: intent.customer_notes,
+                        });
+
+                        sessionStorage.removeItem('turfmate_pending_booking');
+                        sessionStorage.setItem('turfmate_active_hold', JSON.stringify(booking));
+
+                        router.push(`/checkout?booking_id=${booking.id}`);
+                        return;
+                    } catch (bErr: unknown) {
+                        console.error('Failed to create booking after login:', bErr);
+                        sessionStorage.removeItem('turfmate_pending_booking');
+                        const axiosErr = bErr as { response?: { status?: number } };
+                        if (axiosErr?.response?.status === 409) {
+                            router.push('/?booking_error=conflict#availability-section');
+                        } else {
+                            router.push('/#availability-section');
+                        }
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error('Error in post-auth booking creation:', err);
+            }
+        }
+
+        // Default redirects if no pending booking was waiting
+        if (userRole === 'admin' || userRole === 'staff') {
+            router.push('/admin');
+        } else {
+            const redirectParam = searchParams.get('redirect');
+            if (redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login' && redirectParam !== '/register' && redirectParam !== 'checkout') {
+                router.push(redirectParam);
+            } else {
+                router.push('/');
+            }
+        }
+    };
+
     // Handle Login Submit
     const onLoginSubmit = async (data: LoginFormInputs) => {
         setIsLoginLoading(true);
         setLoginFormError(null);
+        setBookingHoldingMessage(null);
 
         try {
             const rawId = data.phone_number.trim();
@@ -155,11 +240,7 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
             await login(response);
 
             const currentUser = useAuthStore.getState().user;
-            if (currentUser?.is_superuser || currentUser?.role === 'admin' || currentUser?.role === 'staff') {
-                router.push('/admin');
-            } else {
-                router.push('/');
-            }
+            await handlePostAuthRedirect(currentUser?.role);
         } catch (error) {
             setIsLoginLoading(false);
             const axiosError = error as AxiosError<LoginErrorResponse>;
@@ -188,6 +269,7 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
     const onRegisterSubmit = async (data: RegisterFormInputs) => {
         setIsRegisterLoading(true);
         setRegisterFormError(null);
+        setBookingHoldingMessage(null);
 
         try {
             const cleanPhone = data.phone_number.trim().replace(/[\s-]/g, '');
@@ -201,7 +283,7 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
             );
 
             await login(response.tokens, response.user);
-            router.push('/');
+            await handlePostAuthRedirect(response.user.role);
         } catch (error) {
             setIsRegisterLoading(false);
             const axiosError = error as AxiosError<RegisterErrorResponse>;
@@ -361,6 +443,31 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                                     Quick registration to start booking pitches in seconds.
                                 </p>
                             </div>
+
+                            {/* Pending Slot Reservation Waiting Banner */}
+                            {pendingIntent && (
+                                <div className="mb-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl p-3.5 shadow-lg shadow-emerald-950/30 flex items-start gap-3 animate-in fade-in duration-200">
+                                    <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0 mt-0.5">
+                                        <Sparkles size={16} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                Slot Held for You
+                                            </span>
+                                            <span className="text-xs font-black text-emerald-300">
+                                                ৳{Number(pendingIntent.total_price).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-bold text-white mt-1 truncate">
+                                            {pendingIntent.court_name} • {pendingIntent.count} Hour{pendingIntent.count > 1 ? 's' : ''}
+                                        </p>
+                                        <p className="text-[11px] text-zinc-400 mt-1">
+                                            Complete registration to lock this 10-minute hold and proceed directly to payment.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Form Error Banner */}
                             {registerFormError && (
@@ -539,11 +646,11 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                                     {isRegisterLoading ? (
                                         <>
                                             <Loader2 size={16} className="animate-spin" />
-                                            <span>Creating Player Account...</span>
+                                            <span>{bookingHoldingMessage || 'Creating Player Account...'}</span>
                                         </>
                                     ) : (
                                         <>
-                                            <span>Register & Book Now</span>
+                                            <span>{pendingIntent ? 'Register & Lock Slots' : 'Register & Book Now'}</span>
                                             <ArrowRight size={16} />
                                         </>
                                     )}
@@ -604,6 +711,31 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                                     Enter your mobile number to access your pitch bookings.
                                 </p>
                             </div>
+
+                            {/* Pending Slot Reservation Waiting Banner */}
+                            {pendingIntent && (
+                                <div className="mb-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl p-3.5 shadow-lg shadow-emerald-950/30 flex items-start gap-3 animate-in fade-in duration-200">
+                                    <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0 mt-0.5">
+                                        <Sparkles size={16} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                Slot Held for You
+                                            </span>
+                                            <span className="text-xs font-black text-emerald-300">
+                                                ৳{Number(pendingIntent.total_price).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-bold text-white mt-1 truncate">
+                                            {pendingIntent.court_name} • {pendingIntent.count} Hour{pendingIntent.count > 1 ? 's' : ''}
+                                        </p>
+                                        <p className="text-[11px] text-zinc-400 mt-1">
+                                            Sign in to lock this 10-minute hold and proceed directly to payment.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Form Error Banner */}
                             {loginFormError && (
@@ -690,11 +822,11 @@ export default function AuthCard({ defaultTab = 'login' }: AuthCardProps) {
                                     {isLoginLoading ? (
                                         <>
                                             <Loader2 size={16} className="animate-spin" />
-                                            <span>Authenticating...</span>
+                                            <span>{bookingHoldingMessage || 'Authenticating...'}</span>
                                         </>
                                     ) : (
                                         <>
-                                            <span>Sign In to Pitch Pass</span>
+                                            <span>{pendingIntent ? 'Sign In & Lock Slots' : 'Sign In to Pitch Pass'}</span>
                                             <ArrowRight size={16} />
                                         </>
                                     )}

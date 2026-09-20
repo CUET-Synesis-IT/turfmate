@@ -32,7 +32,7 @@ flowchart TD
 
     subgraph Frontend [Frontend: Next.js 16 & Tailwind v4]
         Landing[Landing Page & 2-Day Slot Grid]
-        HoldModal[10-Min Hold & Checkout Modal]
+        CheckoutPage[10-Min Hold & Checkout Page]
         PlayerDash[Player Dashboard & History]
         AdminDesk[Operations Hub & Bookings Desk]
     end
@@ -52,14 +52,14 @@ flowchart TD
 
     %% User Interactions
     Customer -->|Browse & Select Slots| Landing
-    Customer -->|Hold & Checkout| HoldModal
+    Customer -->|Hold & Checkout| CheckoutPage
     Customer -->|View Passes| PlayerDash
     Staff -->|Walk-in & Pitch Controls| AdminDesk
 
     %% Frontend to Backend API Calls
     Landing -->|GET /courts/availability| APIRouter
-    HoldModal -->|POST /bookings| APIRouter
-    HoldModal -->|POST /payments/sslcommerz/initiate| APIRouter
+    CheckoutPage -->|POST /bookings| APIRouter
+    CheckoutPage -->|POST /payments/sslcommerz/initiate| APIRouter
     PlayerDash -->|GET /bookings/my-bookings| APIRouter
     AdminDesk -->|POST /bookings/staff & /venues| APIRouter
 
@@ -182,6 +182,7 @@ turfmate/
 │   ├── app/
 │   │   ├── admin/                # Operations Hub / Admin portal
 │   │   ├── booking/              # SSLCOMMERZ return handlers (success, failed, cancel)
+│   │   ├── checkout/             # 10-minute hold payment checkout
 │   │   ├── dashboard/            # Player dashboard & bookings
 │   │   ├── login/                # Player / Staff login page
 │   │   ├── register/             # New user registration
@@ -189,7 +190,6 @@ turfmate/
 │   │   └── page.tsx              # Landing page with live 2-day slot booking grid
 │   ├── components/
 │   │   ├── admin/                # BookingsDesk, VenuePitchManager, PricingRuleManager
-│   │   ├── BookingHoldPaymentModal.tsx # 10-minute hold payment modal
 │   │   ├── SlotAvailabilityPreview.tsx # 2-day interactive availability grid
 │   │   ├── Navbar.tsx
 │   │   └── Footer.tsx

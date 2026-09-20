@@ -30,7 +30,7 @@ flowchart TD
     subgraph Frontend [Frontend: Next.js 16 & React 19]
         NextApp[Next.js App Server & UI<br/>Vercel / Node.js 20]
         SlotGrid[2-Day Slot Micro-Grid]
-        HoldModal[10-Min Hold & Payment Modal]
+        CheckoutPage[10-Min Hold & Checkout Page]
         AdminHub[Operations Hub & Bookings Desk]
     end
 
@@ -52,15 +52,15 @@ flowchart TD
 
     %% Client to Frontend UI
     Player -->|Browse & Reserve| SlotGrid
-    Player -->|Payment Hold| HoldModal
+    Player -->|Payment Hold| CheckoutPage
     StaffUser -->|Manage Turfs & Walk-ins| AdminHub
     NextApp -.->|Renders| SlotGrid
-    NextApp -.->|Renders| HoldModal
+    NextApp -.->|Renders| CheckoutPage
     NextApp -.->|Renders| AdminHub
 
     %% Frontend to API Gateway
     SlotGrid -->|GET /courts/availability| APIRouter
-    HoldModal -->|POST /bookings & /payments| APIRouter
+    CheckoutPage -->|POST /bookings & /payments| APIRouter
     AdminHub -->|POST /bookings/staff & /venues| APIRouter
 
     %% API Gateway to Modules
@@ -457,12 +457,12 @@ frontend/
 │   ├── page.tsx               # High-converting Landing page with 2-day live slot grid
 │   ├── login/                 # Phone/password authentication
 │   ├── register/              # New player registration
+│   ├── checkout/              # 10-minute hold payment checkout page
 │   ├── dashboard/             # Player portal (Active matches, past history)
 │   ├── admin/page.tsx         # Operations Hub (Bookings Desk, Pitches, Dynamic Pricing)
 │   └── booking/               # SSLCOMMERZ redirect return handlers
 ├── components/
 │   ├── SlotAvailabilityPreview.tsx # 2-day micro-grid slot selector
-│   ├── BookingHoldPaymentModal.tsx # 10-minute hold countdown timer & SSLCOMMERZ trigger
 │   ├── admin/
 │   │   ├── BookingsDesk.tsx   # Live reservation management table & walk-in creator
 │   │   ├── VenuePitchManager.tsx # Court dimensions, surface, maintenance status

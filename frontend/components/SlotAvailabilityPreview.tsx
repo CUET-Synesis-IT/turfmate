@@ -2,10 +2,9 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Court, SlotInfo, BookingResponse } from '@/types';
+import { Court, SlotInfo } from '@/types';
 import { bookingService } from '@/services/bookingService';
 import { useAuthStore } from '@/lib/auth-store';
-import BookingHoldPaymentModal from '@/components/BookingHoldPaymentModal';
 import {
     Calendar as CalendarIcon,
     Clock,
@@ -263,17 +262,28 @@ export default function SlotAvailabilityPreview({
     // Booking & Checkout States
     const [isBookingLoading, setIsBookingLoading] = useState<boolean>(false);
     const [bookingStepMessage, setBookingStepMessage] = useState<string>('');
-    const [bookingError, setBookingError] = useState<string | null>(null);
+    const [bookingError, setBookingError] = useState<string | null>(() => {
+        if (typeof window === 'undefined') return null;
+        const params = new URLSearchParams(window.location.search);
+        return params.get('booking_error') === 'conflict'
+            ? 'The slots you selected were just reserved by another team while logging in. Fresh availability is loaded below.'
+            : null;
+    });
     const [customerNotes, setCustomerNotes] = useState<string>('');
     const [showNotesInput, setShowNotesInput] = useState<boolean>(false);
-
-    // 10-Minute Hold Payment Modal State
-    const [pendingHoldBooking, setPendingHoldBooking] = useState<BookingResponse | null>(null);
-    const [showHoldModal, setShowHoldModal] = useState<boolean>(false);
 
     const currentCourt = useMemo(() => {
         return courts.find((c) => c.id === activeCourtId) || courts[0];
     }, [courts, activeCourtId]);
+
+    // Clean URL query parameter if returning from login with error
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('booking_error') === 'conflict') {
+            window.history.replaceState({}, '', window.location.pathname + '#availability-section');
+        }
+    }, []);
 
     // Day navigation handlers
     const canGoPrevDay = useMemo(() => {
@@ -609,13 +619,26 @@ export default function SlotAvailabilityPreview({
     const handleProceedToBooking = async () => {
         if (selectedCount === 0 || !earliestSlot || !latestSlot) return;
 
-        // Auth Guard
+        // Auth Guard: If not logged in, persist the exact slot selection intent so we can auto-hold after login
         if (!isAuthenticated()) {
             if (typeof window !== 'undefined') {
+                const pendingIntent = {
+                    court_id: activeCourtId,
+                    court_name: currentCourt?.name || 'Pitch',
+                    venue_name: venueName || 'TurfMate Arena',
+                    date: activeDate,
+                    start_datetime: earliestSlot.start_time,
+                    end_datetime: latestSlot.end_time,
+                    customer_notes: customerNotes.trim() || undefined,
+                    total_price: totalBookingPrice,
+                    count: selectedCount,
+                    timestamp: Date.now(),
+                };
+                sessionStorage.setItem('turfmate_pending_booking', JSON.stringify(pendingIntent));
                 sessionStorage.setItem('pending_booking_court', activeCourtId);
                 sessionStorage.setItem('pending_booking_date', activeDate);
             }
-            router.push(`/login?redirect=/#availability-section`);
+            router.push('/login?redirect=checkout');
             return;
         }
 
@@ -639,10 +662,8 @@ export default function SlotAvailabilityPreview({
                 customer_notes: customerNotes.trim() ? customerNotes.trim() : undefined,
             });
 
-            // Launch 10-Minute Hold Payment Modal with live timer
-            setPendingHoldBooking(booking);
-            setShowHoldModal(true);
-            setIsBookingLoading(false);
+            // Navigate directly to dedicated checkout page
+            router.push(`/checkout?booking_id=${booking.id}`);
         } catch (err: unknown) {
             console.error('Booking checkout error:', err);
             const axiosError = err as { response?: { status?: number; data?: { detail?: unknown } }; message?: string };
@@ -1222,7 +1243,7 @@ export default function SlotAvailabilityPreview({
                                         className="flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-sm px-7 py-3.5 rounded-2xl shadow-xl shadow-emerald-900/50 hover:scale-105 transition-all cursor-pointer"
                                     >
                                         <LogIn size={16} />
-                                        <span>Login to Book ({selectedCount}h)</span>
+                                        <span>Login to Reserve ({selectedCount}h)</span>
                                         <ArrowRight size={16} />
                                     </button>
                                 )}
@@ -1264,7 +1285,7 @@ export default function SlotAvailabilityPreview({
                         )}
 
                         {/* User authentication banner note */}
-                        {user && (
+                        {user ? (
                             <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
                                 <Sparkles size={13} className="text-emerald-400 shrink-0" />
                                 <span>
@@ -1272,23 +1293,15 @@ export default function SlotAvailabilityPreview({
                                     A single verified booking reference will cover the complete {selectedCount}-hour session.
                                 </span>
                             </div>
+                        ) : (
+                            <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+                                <Sparkles size={13} className="text-emerald-400 shrink-0" />
+                                <span>
+                                    Your {selectedCount}-hour slot selection is saved. You will be sent directly to checkout once logged in.
+                                </span>
+                            </div>
                         )}
                     </div>
-                )}
-
-                {/* 10-Minute Hold & Payment Countdown Modal */}
-                {showHoldModal && pendingHoldBooking && (
-                    <BookingHoldPaymentModal
-                        booking={pendingHoldBooking}
-                        venueName={venueName || 'TurfMate Arena'}
-                        courtName={currentCourt?.name || 'Pitch'}
-                        onCancelled={() => {
-                            setShowHoldModal(false);
-                            setPendingHoldBooking(null);
-                            setSelectedSlots([]);
-                            fetchSlots(activeCourtId, activeDate, nextDate);
-                        }}
-                    />
                 )}
             </div>
         </div>
