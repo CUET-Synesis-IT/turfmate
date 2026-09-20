@@ -905,63 +905,70 @@ export default function SlotAvailabilityPreview({
                     </div>
 
                     {/* 2. Court Selector & Time Period Filter */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                        {/* Court Selector */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                        {/* Court Selector Dropdown */}
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-zinc-300 mb-2.5">
+                            <label htmlFor="pitch-dropdown-select" className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-zinc-300 mb-2">
                                 2. Selected Pitch
                             </label>
-                            <div className="flex flex-wrap gap-2">
-                                {courts.map((court) => (
-                                    <button
-                                        type="button"
-                                        key={court.id}
-                                        onClick={() => {
-                                            if (onCourtSelect) onCourtSelect(court.id);
-                                            setSelectedSlots([]);
-                                        }}
-                                        className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                            activeCourtId === court.id
-                                                ? 'bg-gray-950 text-white dark:bg-white dark:text-gray-950 shadow-md ring-2 ring-emerald-500/40'
-                                                : 'bg-zinc-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                        }`}
-                                    >
-                                        {court.name}
-                                    </button>
-                                ))}
+                            <div className="relative">
+                                <select
+                                    id="pitch-dropdown-select"
+                                    value={activeCourtId}
+                                    onChange={(e) => {
+                                        if (onCourtSelect) onCourtSelect(e.target.value);
+                                        setSelectedSlots([]);
+                                    }}
+                                    className="w-full appearance-none bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2.5 pr-10 text-xs sm:text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer transition-all"
+                                >
+                                    {courts.map((court) => (
+                                        <option key={court.id} value={court.id} className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                            {court.name}
+                                        </option>
+                                    ))}
+
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
+                                    <ChevronDown size={16} />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Period Filter */}
+                        {/* Time Period Filter Dropdown */}
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-zinc-300 mb-2.5">
+                            <label htmlFor="time-window-dropdown-select" className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-zinc-300 mb-2">
                                 3. Filter by Time Window
                             </label>
-                            <div className="flex flex-wrap gap-2">
-                                {[
-                                    { id: 'all', label: 'All Hours (24h)' },
-                                    { id: 'overnight', label: 'Late Night (00-06)' },
-                                    { id: 'morning', label: 'Morning (06-12)' },
-                                    { id: 'afternoon', label: 'Afternoon (12-17)' },
-                                    { id: 'evening', label: 'Evening (17-24)' },
-                                ].map((tab) => (
-
-                                    <button
-                                        type="button"
-                                        key={tab.id}
-                                        onClick={() => setActivePeriod(tab.id as typeof activePeriod)}
-                                        className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                            activePeriod === tab.id
-                                                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                                                : 'bg-zinc-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                        }`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
+                            <div className="relative">
+                                <select
+                                    id="time-window-dropdown-select"
+                                    value={activePeriod}
+                                    onChange={(e) => setActivePeriod(e.target.value as typeof activePeriod)}
+                                    className="w-full appearance-none bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2.5 pr-10 text-xs sm:text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer transition-all"
+                                >
+                                    <option value="all" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                        All Hours (24h)
+                                    </option>
+                                    <option value="overnight" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                        Late Night (00:00 - 06:00)
+                                    </option>
+                                    <option value="morning" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                        Morning (06:00 - 12:00)
+                                    </option>
+                                    <option value="afternoon" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                        Afternoon (12:00 - 17:00)
+                                    </option>
+                                    <option value="evening" className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 font-medium py-1">
+                                        Evening (17:00 - 24:00)
+                                    </option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
+                                    <ChevronDown size={16} />
+                                </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 {/* Subheader Legend */}
