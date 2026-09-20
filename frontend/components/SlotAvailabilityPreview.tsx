@@ -11,6 +11,7 @@ import {
     Sun,
     Moon,
     Check,
+    CheckCircle2,
     ShieldCheck,
     Banknote,
     Loader2,
@@ -26,7 +27,8 @@ import {
     RefreshCw,
     CalendarDays,
     Layers,
-    Sparkles
+    Sparkles,
+    X
 } from 'lucide-react';
 
 interface SlotAvailabilityPreviewProps {
@@ -197,7 +199,20 @@ export default function SlotAvailabilityPreview({
     }, [today]);
 
     // Active playing date (Day 1)
-    const [activeDate, setActiveDate] = useState<string>(todayStr);
+    const [activeDate, setActiveDate] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = sessionStorage.getItem('turfmate_selected_slots');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed?.date) return parsed.date;
+                }
+            } catch {
+                // ignore
+            }
+        }
+        return todayStr;
+    });
 
     // Derived consecutive next day (Day 2)
     const nextDate = useMemo(() => {
@@ -274,12 +289,61 @@ export default function SlotAvailabilityPreview({
         }
         return null;
     });
-    const [customerNotes, setCustomerNotes] = useState<string>('');
-    const [showNotesInput, setShowNotesInput] = useState<boolean>(false);
+    const [customerNotes, setCustomerNotes] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = sessionStorage.getItem('turfmate_selected_slots');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed?.customerNotes) return parsed.customerNotes;
+                }
+            } catch {
+                // ignore
+            }
+        }
+        return '';
+    });
+    const [showNotesInput, setShowNotesInput] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = sessionStorage.getItem('turfmate_selected_slots');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed?.customerNotes) return true;
+                }
+            } catch {
+                // ignore
+            }
+        }
+        return false;
+    });
+    const [slotNotice, setSlotNotice] = useState<{
+        type: 'success' | 'warning' | 'info';
+        message: string;
+        details?: string;
+    } | null>(null);
 
     const currentCourt = useMemo(() => {
         return courts.find((c) => c.id === activeCourtId) || courts[0];
     }, [courts, activeCourtId]);
+
+    // Synchronize initial court if a saved slot selection exists in sessionStorage
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const raw = sessionStorage.getItem('turfmate_selected_slots');
+        if (!raw) return;
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed?.courtId && onCourtSelect && parsed.courtId !== activeCourtId) {
+                const timer = setTimeout(() => {
+                    onCourtSelect(parsed.courtId);
+                }, 0);
+                return () => clearTimeout(timer);
+            }
+        } catch {
+            // ignore
+        }
+    }, [activeCourtId, onCourtSelect]);
 
     // Clean URL query parameter if returning from login with error
     useEffect(() => {
@@ -398,7 +462,7 @@ export default function SlotAvailabilityPreview({
     const [nowTimestamp] = useState<number>(() => Date.now());
 
     // Helper: check if a slot is in the past
-    const isSlotInPast = (startTimeIso: string) => {
+    const isSlotInPast = useCallback((startTimeIso: string) => {
         if (!startTimeIso) return false;
         try {
             const slotTime = new Date(startTimeIso).getTime();
@@ -406,7 +470,7 @@ export default function SlotAvailabilityPreview({
         } catch {
             return false;
         }
-    };
+    }, [nowTimestamp]);
 
     // Concurrently fetch both Day 1 and Day 2 live availability
     const fetchSlots = useCallback((courtId: string, d1: string, d2: string) => {
@@ -505,6 +569,81 @@ export default function SlotAvailabilityPreview({
 
         return () => clearInterval(pollInterval);
     }, [activeCourtId, activeDate, nextDate, currentCourt?.name]);
+
+    // Restore saved slot selection after returning from login/register
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const raw = sessionStorage.getItem('turfmate_selected_slots');
+        if (!raw) return;
+
+        // Wait until slots for Day 1 or Day 2 have loaded
+        if (day1Slots.length === 0 && day2Slots.length === 0) return;
+
+        try {
+            const saved = JSON.parse(raw);
+            if (!saved || !Array.isArray(saved.slotStartTimes) || saved.slotStartTimes.length === 0) {
+                sessionStorage.removeItem('turfmate_selected_slots');
+                return;
+            }
+
+            // Wait if court or date are not yet synchronized
+            if (saved.courtId && saved.courtId !== activeCourtId) return;
+            if (saved.date && saved.date !== activeDate) return;
+
+            const allSlots = [...day1Slots, ...day2Slots];
+            const targetTimes: string[] = saved.slotStartTimes;
+
+            const availableToRestore: SlotInfo[] = [];
+            const unavailableTimes: string[] = [];
+
+            targetTimes.forEach((targetTime) => {
+                const match = allSlots.find((s) => s.start_time === targetTime);
+                if (match && match.status === 'available' && !isSlotInPast(match.start_time)) {
+                    availableToRestore.push(match);
+                } else {
+                    unavailableTimes.push(targetTime);
+                }
+            });
+
+            // Mark selection handled in sessionStorage
+            sessionStorage.removeItem('turfmate_selected_slots');
+
+            const restoreTimer = setTimeout(() => {
+                if (availableToRestore.length > 0) {
+                    setSelectedSlots(availableToRestore);
+                } else {
+                    setSelectedSlots([]);
+                }
+
+                if (unavailableTimes.length > 0) {
+                    if (availableToRestore.length > 0) {
+                        setSlotNotice({
+                            type: 'warning',
+                            message: `${unavailableTimes.length} of your previously selected slot${unavailableTimes.length > 1 ? 's' : ''} became unavailable and ${unavailableTimes.length > 1 ? 'were' : 'was'} deselected.`,
+                            details: `Your remaining ${availableToRestore.length} available slot${availableToRestore.length > 1 ? 's are' : ' is'} marked below. You can continue to checkout or adjust your selection.`,
+                        });
+                    } else {
+                        setSlotNotice({
+                            type: 'warning',
+                            message: 'The slot(s) you previously selected became unavailable while signing in.',
+                            details: 'Another player may have reserved them. Fresh live availability is displayed below.',
+                        });
+                    }
+                } else if (availableToRestore.length > 0) {
+                    setSlotNotice({
+                        type: 'success',
+                        message: `Welcome back! Your ${availableToRestore.length}-hour slot selection has been restored.`,
+                        details: 'Review your selection below and proceed to checkout.',
+                    });
+                }
+            }, 0);
+
+            return () => clearTimeout(restoreTimer);
+        } catch (err) {
+            console.error('Error restoring saved slot selection:', err);
+            sessionStorage.removeItem('turfmate_selected_slots');
+        }
+    }, [day1Slots, day2Slots, activeCourtId, activeDate, isSlotInPast]);
 
     // Filter slots by time period for Day 1 and Day 2
     const filteredDay1Slots = useMemo(() => {
@@ -624,26 +763,25 @@ export default function SlotAvailabilityPreview({
     const handleProceedToBooking = async () => {
         if (selectedCount === 0 || !earliestSlot || !latestSlot) return;
 
-        // Auth Guard: If not logged in, persist the exact slot selection intent so we can auto-hold after login
+        // Auth Guard: If not logged in, persist the exact slot selection intent so we can restore after login
         if (!isAuthenticated()) {
             if (typeof window !== 'undefined') {
-                const pendingIntent = {
-                    court_id: activeCourtId,
-                    court_name: currentCourt?.name || 'Pitch',
-                    venue_name: venueName || 'TurfMate Arena',
+                const savedSelection = {
+                    courtId: activeCourtId,
+                    courtName: currentCourt?.name || 'Pitch',
+                    venueName: venueName || 'TurfMate Arena',
                     date: activeDate,
-                    start_datetime: earliestSlot.start_time,
-                    end_datetime: latestSlot.end_time,
-                    customer_notes: customerNotes.trim() || undefined,
-                    total_price: totalBookingPrice,
+                    slotStartTimes: selectedSlots.map((s) => s.start_time),
+                    customerNotes: customerNotes.trim() || undefined,
+                    totalPrice: totalBookingPrice,
                     count: selectedCount,
-                    timestamp: Date.now(),
                 };
-                sessionStorage.setItem('turfmate_pending_booking', JSON.stringify(pendingIntent));
-                sessionStorage.setItem('pending_booking_court', activeCourtId);
-                sessionStorage.setItem('pending_booking_date', activeDate);
+                sessionStorage.setItem('turfmate_selected_slots', JSON.stringify(savedSelection));
+                sessionStorage.removeItem('turfmate_pending_booking');
+                sessionStorage.removeItem('pending_booking_court');
+                sessionStorage.removeItem('pending_booking_date');
             }
-            router.push('/login?redirect=checkout');
+            router.push('/login?redirect=/#availability-section');
             return;
         }
 
@@ -711,6 +849,39 @@ export default function SlotAvailabilityPreview({
                         <span>Continuous 2-Day Horizon Active</span>
                     </div>
                 </div>
+
+                {/* Flash Notice / Toast for Restored or Deselected Slots */}
+                {slotNotice && (
+                    <div
+                        className={`mb-6 p-4 rounded-2xl border flex items-start gap-3 transition-all animate-in fade-in slide-in-from-top-2 duration-300 ${
+                            slotNotice.type === 'warning'
+                                ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
+                                : slotNotice.type === 'success'
+                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
+                                : 'bg-zinc-800/80 border-zinc-700 text-zinc-200'
+                        }`}
+                    >
+                        {slotNotice.type === 'warning' ? (
+                            <AlertCircle size={18} className="shrink-0 mt-0.5 text-amber-400" />
+                        ) : (
+                            <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-400" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs sm:text-sm font-semibold">{slotNotice.message}</p>
+                            {slotNotice.details && (
+                                <p className="text-xs text-zinc-300/80 mt-0.5">{slotNotice.details}</p>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setSlotNotice(null)}
+                            className="text-zinc-400 hover:text-white p-1 transition-colors cursor-pointer rounded-lg"
+                            aria-label="Dismiss notice"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                )}
 
                 {/* Filter Controls Bar */}
                 <div className="space-y-6 mb-8">
@@ -1248,7 +1419,7 @@ export default function SlotAvailabilityPreview({
                                         className="flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-sm px-7 py-3.5 rounded-2xl shadow-xl shadow-emerald-900/50 hover:scale-105 transition-all cursor-pointer"
                                     >
                                         <LogIn size={16} />
-                                        <span>Login to Reserve ({selectedCount}h)</span>
+                                        <span>Login to Book ({selectedCount}h)</span>
                                         <ArrowRight size={16} />
                                     </button>
                                 )}
@@ -1302,7 +1473,7 @@ export default function SlotAvailabilityPreview({
                             <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
                                 <Sparkles size={13} className="text-emerald-400 shrink-0" />
                                 <span>
-                                    Your {selectedCount}-hour slot selection is saved. You will be sent directly to checkout once logged in.
+                                    Your {selectedCount}-hour slot selection will be saved and restored once you sign in.
                                 </span>
                             </div>
                         )}
