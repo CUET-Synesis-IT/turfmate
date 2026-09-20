@@ -24,7 +24,9 @@ import {
     XCircle,
     CreditCard,
     Sparkles,
-    AlertTriangle
+    AlertTriangle,
+    ChevronDown,
+    Filter
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -36,8 +38,9 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Filter tab: 'upcoming' | 'completed' | 'cancelled' | 'all'
-    const [activeTab, setActiveTab] = useState<'upcoming' | 'completed' | 'cancelled' | 'all'>('upcoming');
+    // Filters: Schedule horizon, Status dropdown, and Search query
+    const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
 
     // Modal states
@@ -147,9 +150,44 @@ export default function DashboardPage() {
         }
     };
 
-    // Metrics computation
+    // Breakdown counts for filter chips & status dropdown
+    const counts = useMemo(() => {
+        const now = nowTimestamp;
+        let upcoming = 0;
+        let past = 0;
+        let pending = 0;
+        let confirmed = 0;
+        let completed = 0;
+        let cancelled = 0;
+
+        bookings.forEach((b) => {
+            const isFuture = new Date(b.start_datetime).getTime() > now;
+            if (isFuture) {
+                upcoming++;
+            } else {
+                past++;
+            }
+
+            if (b.status === 'pending') pending++;
+            else if (b.status === 'confirmed') confirmed++;
+            else if (b.status === 'completed') completed++;
+            else if (b.status === 'cancelled') cancelled++;
+        });
+
+        return {
+            total: bookings.length,
+            upcoming,
+            past,
+            pending,
+            confirmed,
+            completed,
+            cancelled,
+        };
+    }, [bookings, nowTimestamp]);
+
+    // Summary metrics for top 4 cards
     const metrics = useMemo(() => {
-        const now = new Date().getTime();
+        const now = nowTimestamp;
         let upcoming = 0;
         let completed = 0;
         let cancelled = 0;
@@ -175,28 +213,25 @@ export default function DashboardPage() {
             cancelled,
             totalInvested,
         };
-    }, [bookings]);
+    }, [bookings, nowTimestamp]);
 
-    // Filtered bookings
+    // Filtered bookings based on horizon, status, and search query
     const filteredBookings = useMemo(() => {
-        const now = new Date().getTime();
+        const now = nowTimestamp;
 
         return bookings.filter((b) => {
             const isFuture = new Date(b.start_datetime).getTime() > now;
 
-            // Tab filter
-            if (activeTab === 'upcoming') {
-                if (b.status === 'cancelled') return false;
-                if (!isFuture && b.status !== 'pending') return false;
-            } else if (activeTab === 'completed') {
-                if (b.status !== 'completed' && !(b.status === 'confirmed' && !isFuture)) return false;
-            } else if (activeTab === 'cancelled') {
-                if (b.status !== 'cancelled') return false;
-            }
+            // Schedule Horizon Filter
+            if (timeFilter === 'upcoming' && !isFuture) return false;
+            if (timeFilter === 'past' && isFuture) return false;
+
+            // Status Dropdown Filter
+            if (statusFilter !== 'all' && b.status !== statusFilter) return false;
 
             // Search filter
             if (searchQuery.trim()) {
-                const q = searchQuery.toLowerCase();
+                const q = searchQuery.toLowerCase().trim();
                 const matchRef = b.booking_reference?.toLowerCase().includes(q);
                 const matchCourt = b.court?.name?.toLowerCase().includes(q);
                 const matchVenue = b.court?.venue_name?.toLowerCase().includes(q);
@@ -205,7 +240,7 @@ export default function DashboardPage() {
 
             return true;
         });
-    }, [bookings, activeTab, searchQuery]);
+    }, [bookings, timeFilter, statusFilter, searchQuery, nowTimestamp]);
 
     // Date/Time formatting helpers in client local timezone
     const formatTime = (isoString?: string) => {
@@ -329,27 +364,69 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Controls Bar: Tabs & Search */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
-                    {/* Filter Tabs */}
-                    <div className="flex items-center gap-1.5 p-1 bg-zinc-900 border border-zinc-800 rounded-2xl">
-                        {[
-                            { id: 'upcoming', label: `Upcoming (${metrics.upcoming})` },
-                            { id: 'completed', label: `Completed (${metrics.completed})` },
-                            { id: 'cancelled', label: `Cancelled (${metrics.cancelled})` },
-                            { id: 'all', label: `All (${metrics.total})` },
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${activeTab === tab.id
-                                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
-                                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+                {/* Controls Bar: Horizon Tabs, Status Dropdown & Search */}
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-6">
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Schedule Horizon Filter */}
+                        <div className="flex items-center gap-1 p-1 bg-zinc-900 border border-zinc-800 rounded-2xl">
+                            {[
+                                { id: 'all', label: `All (${counts.total})` },
+                                { id: 'upcoming', label: `Upcoming (${counts.upcoming})` },
+                                { id: 'past', label: `Past (${counts.past})` },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setTimeFilter(tab.id as typeof timeFilter)}
+                                    className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                                        timeFilter === tab.id
+                                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
+                                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                                     }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Status Dropdown Filter */}
+                        <div className="relative">
+                            <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus-within:border-emerald-500 rounded-2xl px-3 py-1.5 transition-colors">
+                                <Filter size={13} className="text-emerald-400 shrink-0" />
+                                <label htmlFor="status-filter-select" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 shrink-0">
+                                    Status:
+                                </label>
+                                <select
+                                    id="status-filter-select"
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    aria-label="Filter bookings by status"
+                                    className="appearance-none bg-transparent pr-5 text-xs font-bold text-white outline-none cursor-pointer"
+                                >
+                                    <option value="all" className="bg-zinc-900 text-white">All Statuses ({counts.total})</option>
+                                    <option value="pending" className="bg-zinc-900 text-amber-400">Pending ({counts.pending})</option>
+                                    <option value="confirmed" className="bg-zinc-900 text-emerald-400">Confirmed ({counts.confirmed})</option>
+                                    <option value="completed" className="bg-zinc-900 text-blue-400">Completed ({counts.completed})</option>
+                                    <option value="cancelled" className="bg-zinc-900 text-rose-400">Cancelled ({counts.cancelled})</option>
+                                </select>
+                                <ChevronDown size={14} className="text-zinc-400 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" />
+                            </div>
+                        </div>
+
+                        {/* Reset Filters Action */}
+                        {(statusFilter !== 'all' || timeFilter !== 'all' || searchQuery) && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStatusFilter('all');
+                                    setTimeFilter('all');
+                                    setSearchQuery('');
+                                }}
+                                className="text-xs text-zinc-400 hover:text-emerald-400 transition-colors cursor-pointer underline px-1"
                             >
-                                {tab.label}
+                                Reset filters
                             </button>
-                        ))}
+                        )}
                     </div>
 
                     {/* Quick Search */}
@@ -363,6 +440,7 @@ export default function DashboardPage() {
                         />
                         {searchQuery && (
                             <button
+                                type="button"
                                 onClick={() => setSearchQuery('')}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs"
                             >
@@ -398,20 +476,35 @@ export default function DashboardPage() {
                             <Calendar size={28} />
                         </div>
                         <h3 className="text-lg font-black text-white mb-1">
-                            No {activeTab !== 'all' ? activeTab : ''} bookings found
+                            No bookings found
                         </h3>
                         <p className="text-xs text-zinc-400 mb-6">
-                            {activeTab === 'upcoming'
-                                ? "You don't have any matches scheduled. Grab your squad and secure an available pitch!"
-                                : 'No match records match your current filter.'}
+                            {statusFilter !== 'all' || timeFilter !== 'all' || searchQuery
+                                ? 'No match records match your current filters.'
+                                : "You don't have any matches scheduled. Grab your squad and secure an available pitch!"}
                         </p>
-                        <Link
-                            href="/#availability-section"
-                            className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-extrabold px-6 py-3 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
-                        >
-                            <span>Explore Pitches & Book</span>
-                            <ArrowRight size={14} />
-                        </Link>
+                        <div className="flex items-center justify-center gap-3">
+                            {(statusFilter !== 'all' || timeFilter !== 'all' || searchQuery) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStatusFilter('all');
+                                        setTimeFilter('all');
+                                        setSearchQuery('');
+                                    }}
+                                    className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                                >
+                                    Reset Filters
+                                </button>
+                            )}
+                            <Link
+                                href="/#availability-section"
+                                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-extrabold px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+                            >
+                                <span>Explore Pitches & Book</span>
+                                <ArrowRight size={14} />
+                            </Link>
+                        </div>
                     </div>
                 ) : (
                     /* Booking Cards Grid */
@@ -460,12 +553,15 @@ export default function DashboardPage() {
                                                         ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400'
                                                         : isCancelled
                                                             ? 'bg-rose-500/15 border border-rose-500/30 text-rose-400'
-                                                            : 'bg-zinc-800 text-zinc-400'
+                                                            : b.status === 'completed'
+                                                                ? 'bg-blue-500/15 border border-blue-500/30 text-blue-400'
+                                                                : 'bg-zinc-800 text-zinc-400'
                                                     }`}
                                             >
                                                 {isConfirmed && <ShieldCheck size={12} />}
                                                 {isCancelled && <XCircle size={12} />}
                                                 {isPending && <Clock size={12} />}
+                                                {b.status === 'completed' && <Trophy size={12} />}
                                                 <span>{b.status}</span>
                                             </span>
                                         </div>
